@@ -190,6 +190,59 @@ textarea:focus{outline:none;border-color:var(--c)}
 .modal .why b{color:var(--c)}
 .modal ol{margin:0;padding-left:24px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#0a1020;border:1px solid var(--y);color:var(--y);padding:10px 16px;z-index:50;animation:pop .2s;text-align:center;font-size:13px;max-width:calc(100% - 32px)}
+/* ---------- responsive ---------- */
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+.modal{max-height:min(88vh,88dvh)}
+.wfoot{flex-wrap:wrap}
+@media(max-width:760px){
+  #menu{gap:40px;padding-block:32px 48px}
+  .wcard h3{font-size:1.15rem}
+  .q{font-size:1.1rem}
+}
+@media(max-width:600px){
+  body{font-size:14px}
+  .top .wrap{gap:8px;padding-block:10px}
+  .brand{font-size:13px;letter-spacing:.1em}
+  .chip,.ico{font-size:11px;padding:4px 8px}
+  .meter{grid-template-columns:1fr 1fr;gap:12px}
+  .meter .track{grid-column:1/-1;grid-row:2}
+  .meter>div:last-child{text-align:right}
+  .meter .big{font-size:24px}
+  #game{gap:12px;padding-block:16px 48px}
+  .hud{gap:12px}
+  .box{padding:12px}
+  .stage{gap:14px}
+  .scene{padding-left:12px}
+  .opt{padding:12px;gap:10px}
+  .letters{flex-wrap:wrap}
+  .letters button{width:44px;height:44px}
+  .legend{padding:12px}
+  .actions .btn{flex:1 1 auto;min-height:44px}
+  .term{padding:10px 12px;font-size:13px}
+  .tline{flex-wrap:wrap;gap:2px 8px}
+  .tline input{flex-basis:100%;border-bottom:1px dashed var(--line)}
+  input,textarea{font-size:16px!important} /* evita el zoom automático en iPhone */
+  .card{font-size:1.2rem;padding:20px 12px}
+  .modal{padding:20px 16px;gap:12px}
+  .modal h4{font-size:1.15rem}
+  .modal .actions .btn{flex:1 1 100%}
+  .badges{grid-template-columns:1fr 1fr}
+  .badge{grid-template-columns:32px 1fr;gap:8px;padding:10px}
+  .badge .gl{width:32px;height:32px;font-size:12px}
+}
+@media(max-width:420px){
+  #bossart{font-size:8px}
+  .bossrow{gap:10px}
+  .badges{grid-template-columns:1fr}
+  h1 br{display:none}
+  .shead .id{margin-left:0}
+  .ps{font-size:11px}
+}
+@media(max-width:340px){
+  #bossart{display:none}
+  .chip{display:none}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
