@@ -526,7 +526,7 @@ function menu(){
   const all=QUESTIONS.map(q=>q.id),m=mastN(all);
   $('#mastN').textContent=`${m}/80`;$('#mastBar').style.width=(m/80*100)+'%';$('#xpN').textContent=S.xp;
   $('#worlds').innerHTML=WORLDS.map((w,i)=>{
-    const open=i===0||!!w.list||S.done[i-1],ids=QUESTIONS.filter(q=>w.g.includes(q.g)).map(q=>q.id),mm=mastN(ids),n=challenges(w).length;
+    const open=true,ids=QUESTIONS.filter(q=>w.g.includes(q.g)).map(q=>q.id),mm=mastN(ids),n=challenges(w).length;
     return `<li class="stop ${S.done[i]?'clear':open?'':'locked'}" style="--wc:${w.c}">
       <span class="node">${S.done[i]?'✓':i+1}</span>
       <div class="wcard">
