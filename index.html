@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cyber Repaso 10°</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: gabinete de terminal — el menú es una ruta vertical de 4 mundos; el juego es una franja HUD sobre una sola consola de reto. Tema oscuro único por decisión. */
+:root{
+  color-scheme:dark;
+  --bg:#0f172a;--surface:#141e36;--surface-2:#1a2644;--line:#283760;
+  --ink:#e4edff;--muted:#93a6c9;
+  --g:#00ff66;--c:#00e5ff;--m:#ff0055;--y:#ffd400;
+  --display:"Chakra Petch","Bahnschrift","Segoe UI",sans-serif;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.6 var(--mono);margin:0;min-height:100%;
+  background-image:linear-gradient(rgba(0,229,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.035) 1px,transparent 1px);background-size:32px 32px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#0b1222}
+::selection{background:var(--g);color:var(--bg)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line)}::-webkit-scrollbar-track{background:transparent}
+.scan{position:fixed;inset:0;pointer-events:none;z-index:60;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px)}
+button{font:inherit;color:inherit;cursor:pointer}
+*:focus-visible{outline:2px solid var(--y);outline-offset:3px}
+.wrap{max-width:960px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* barra superior */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:8;background:#0b1222;border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
+.brand{font:700 15px/1 var(--display);letter-spacing:.14em;color:var(--g);text-shadow:0 0 10px rgba(0,255,102,.55)}
+.brand i{display:inline-block;width:9px;height:15px;background:var(--g);vertical-align:-2px;margin-left:4px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.chip{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:4px 10px;white-space:nowrap}
+.chip b{color:var(--c);font-weight:700}
+#rank{margin-left:auto}
+.ico{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;letter-spacing:.08em;padding:5px 10px}
+.ico:hover{color:var(--ink);border-color:var(--muted)}
+@media(max-width:520px){#rankName{display:none}}
+
+/* tipografía */
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--c)}
+h1{font-weight:700;font-size:clamp(2.1rem,5.4vw,3.6rem);line-height:1.02;letter-spacing:-.02em;color:#fff}
+h1 em{font-style:normal;color:var(--g);text-shadow:0 0 18px rgba(0,255,102,.45)}
+h2{font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.lead{color:var(--muted);max-width:62ch;margin:0;font-size:15px}
+
+/* menú */
+#menu{display:grid;gap:48px;padding-block:40px 64px}
+.hero{display:grid;gap:16px}
+.meter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);padding:16px;max-width:620px}
+.meter .big{font:700 28px/1 var(--display);color:#fff;font-variant-numeric:tabular-nums}
+.meter small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.track{height:10px;background:#0a1020;border:1px solid var(--line)}
+.track i{display:block;height:100%;background:var(--g);box-shadow:0 0 10px rgba(0,255,102,.5);transition:width .5s}
+.sec{display:grid;gap:16px}
+.route{list-style:none;margin:0;padding:0;display:grid;gap:16px;position:relative}
+.route::before{content:"";position:absolute;left:23px;top:24px;bottom:24px;border-left:2px dashed var(--line)}
+.stop{display:grid;grid-template-columns:48px 1fr;gap:16px;align-items:start;position:relative}
+.node{width:48px;height:48px;display:grid;place-items:center;font:700 20px/1 var(--display);background:var(--bg);border:2px solid var(--wc);color:var(--wc);box-shadow:0 0 14px color-mix(in srgb,var(--wc) 45%,transparent)}
+.stop.locked .node{border-color:var(--line);color:var(--muted);box-shadow:none}
+.stop.clear .node{background:var(--wc);color:var(--bg)}
+.wcard{min-width:0;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--wc);padding:16px 24px;display:grid;grid-template-columns:1fr auto;gap:8px 24px;align-items:center}
+.stop.locked .wcard{border-left-color:var(--line);opacity:.6}
+.wcard h3{font-size:1.3rem;font-weight:600;color:#fff;line-height:1.2}
+.wmeta{grid-column:1;display:flex;flex-wrap:wrap;gap:8px}
+.wmeta span{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:2px 8px}
+.wfoot{grid-column:1/-1;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+.wfoot .track{flex:1;max-width:220px;height:6px}
+.wfoot .track i{background:var(--wc);box-shadow:none}
+.wcard .btn{grid-column:2;grid-row:1/3}
+@media(max-width:600px){.wcard{grid-template-columns:1fr;padding:16px}.wcard .btn{grid-column:1;grid-row:auto;justify-self:start}.stop{grid-template-columns:40px 1fr;gap:12px}.node{width:40px;height:40px;font-size:17px}.route::before{left:19px}}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.badge{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center;padding:12px;border:1px dashed var(--line);color:var(--muted);font-size:12px}
+.badge .gl{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);font:700 14px/1 var(--mono)}
+.badge b{display:block;font:600 14px/1.3 var(--display);color:var(--muted)}
+.badge.on{border:1px solid var(--y);color:var(--ink);background:rgba(255,212,0,.05)}
+.badge.on .gl{background:var(--y);border-color:var(--y);color:var(--bg)}
+.badge.on b{color:var(--y)}
+.foot{display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:12px;color:var(--muted)}
+kbd{font:500 11px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;padding:2px 6px;color:var(--ink)}
+
+/* botones */
+.btn{background:transparent;border:2px solid var(--g);color:var(--g);padding:10px 20px;font:700 13px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;box-shadow:4px 4px 0 rgba(0,255,102,.22);transition:transform .08s,background .12s,color .12s}
+.btn:hover:not(:disabled){background:var(--g);color:#03140a}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:1px 1px 0 rgba(0,255,102,.22)}
+.btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.btn.ghost{border-color:var(--line);color:var(--muted);box-shadow:none}
+.btn.ghost:hover:not(:disabled){background:var(--surface-2);color:var(--ink)}
+.btn.warn{border-color:var(--m);color:var(--m);box-shadow:4px 4px 0 rgba(255,0,85,.22)}
+.btn.warn:hover{background:var(--m);color:#fff}
+
+/* juego */
+#game{display:grid;gap:16px;padding-block:24px 64px}
+.hud{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:680px){.hud{grid-template-columns:1fr}}
+.box{background:var(--surface);border:1px solid var(--line);padding:16px;display:grid;gap:8px;min-width:0}
+.box .hd{display:flex;justify-content:space-between;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.box .hd b{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:500}
+.bar{height:14px;background:#0a1020;border:1px solid var(--line);position:relative}
+.bar i{display:block;height:100%;background:var(--g);transition:width .35s steps(6)}
+.bar.hp::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(15% - 1px),rgba(15,23,42,.9) calc(15% - 1px) 15%)}
+.bar.boss i{background:var(--m);box-shadow:0 0 10px rgba(255,0,85,.5)}
+.stats{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stats b{color:var(--c);font-weight:700}
+#combo.hot b{color:var(--y);text-shadow:0 0 8px var(--y)}
+.bossrow{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+#bossart{margin:0;color:var(--m);font:500 11px/1.15 var(--mono);text-shadow:0 0 6px rgba(255,0,85,.6);white-space:pre}
+#bossart.hit{animation:hit .35s}
+@keyframes hit{0%,100%{transform:none;filter:none}25%{transform:translateX(-6px);filter:brightness(2.5)}60%{transform:translateX(6px)}}
+#bossname{font:600 1rem/1.2 var(--display);color:var(--m)}
+body.hurt #game{animation:hurt .32s}
+@keyframes hurt{0%,100%{transform:none}25%{transform:translate(-5px,1px)}60%{transform:translate(5px,-1px)}}
+
+.stage{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--wc,var(--c));padding:24px;display:grid;gap:16px;min-width:0}
+@media(max-width:600px){.stage{padding:16px}}
+.shead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12px;color:var(--muted)}
+.tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bg);background:var(--wc,var(--c));padding:2px 8px}
+.shead .id{margin-left:auto;font-variant-numeric:tabular-nums}
+.scene{border-left:2px solid var(--line);padding:4px 0 4px 16px;color:var(--muted);margin:0;max-width:72ch}
+.scene::before{content:"ESCENARIO";display:block;font-size:10px;letter-spacing:.16em;color:var(--c);margin-bottom:2px}
+.q{font:600 1.2rem/1.4 var(--display);color:#fff;margin:0;max-width:60ch}
+code{font:500 .92em var(--mono);color:var(--g);background:#0a1020;border:1px solid var(--line);padding:0 6px;white-space:pre-wrap}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;background:var(--surface-2);border:1px solid var(--line);padding:12px 16px;display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:baseline;transition:border-color .12s,background .12s}
+.opt .k{font-size:12px;font-weight:700;color:var(--c);border:1px solid var(--c);text-align:center;line-height:22px}
+.opt:hover:not(:disabled){border-color:var(--c);background:#1e2c4f}
+.opt.ok{border-color:var(--g);color:var(--g)}.opt.ok .k{background:var(--g);border-color:var(--g);color:var(--bg)}
+.opt.no{border-color:var(--m);color:var(--m)}.opt.no .k{background:var(--m);border-color:var(--m);color:#fff}
+.opt:disabled{cursor:default}
+.legend{display:grid;gap:4px;padding:12px 16px;background:#0e1730;border:1px solid var(--line);font-size:13px}
+.legend b{color:var(--c);margin-right:8px}
+.mrows{display:grid;gap:8px}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center;background:var(--surface-2);border:1px solid var(--line);padding:12px 16px}
+.mrow p{margin:0;min-width:0}
+.mrow.ok{border-color:var(--g)}.mrow.no{border-color:var(--m)}
+.mrow .fix{grid-column:1/-1;font-size:12px;color:var(--m)}
+.letters{display:flex;gap:4px}
+.letters button{width:36px;height:36px;background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:700}
+.letters button:hover:not(:disabled){border-color:var(--c);color:var(--c)}
+.letters button.sel{background:var(--c);border-color:var(--c);color:var(--bg)}
+.letters button.used:not(.sel){opacity:.4}
+@media(max-width:600px){.mrow{grid-template-columns:1fr}}
+textarea{width:100%;min-height:96px;resize:vertical;background:#0a1020;border:1px solid var(--line);color:var(--ink);font:inherit;padding:12px;line-height:1.5}
+textarea.long{min-height:150px}
+textarea:focus{outline:none;border-color:var(--c)}
+.model{border:1px solid var(--g);background:rgba(0,255,102,.05);padding:16px;display:grid;gap:8px}
+.model h4{margin:0;font:600 14px/1.3 var(--display);color:var(--g);letter-spacing:.06em;text-transform:uppercase}
+.model p,.model ul{margin:0}.model ul{padding-left:20px;color:var(--muted);font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.hint{font-size:12px;color:var(--muted)}
+.term{background:#050811;border:1px solid var(--g);box-shadow:inset 0 0 24px rgba(0,255,102,.06);padding:12px 16px;max-height:320px;overflow:auto;font-size:14px}
+.term .o{white-space:pre-wrap;color:var(--muted)}
+.term .o.cmd{color:var(--ink)}.term .o.err{color:var(--m)}.term .o.good{color:var(--g)}
+.tline{display:flex;gap:8px;align-items:center}
+.ps{color:var(--g);flex:none}
+@media(max-width:520px){.ps{font-size:12px}}
+.tline input{flex:1;min-width:0;background:transparent;border:0;color:#fff;font:inherit;caret-color:var(--g);padding:4px 0}
+.tline input:focus{outline:none}
+.goal{border-left:3px solid var(--y);padding:8px 12px;background:#0e1730;margin:0;color:#fff}
+.goal b{color:var(--y);font-weight:700}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.seq{list-style:decimal inside;margin:0;padding:12px;border:1px dashed var(--line);min-height:56px;display:grid;gap:8px;color:var(--muted)}
+.seq .empty{list-style:none;font-size:12px}
+.pool{display:flex;flex-wrap:wrap;gap:8px;min-height:40px}
+.piece{background:#0a1020;border:1px solid var(--c);color:var(--c);padding:6px 12px;font-size:13px}
+.piece.on{border-color:var(--g);color:var(--g)}
+.card{font:600 1.4rem/1.2 var(--display);color:#fff;text-align:center;border:1px solid var(--y);background:rgba(255,212,0,.04);padding:24px 16px;text-shadow:0 0 10px rgba(255,212,0,.4)}
+.card small{display:block;font:400 12px var(--mono);color:var(--muted);margin-top:8px;text-shadow:none}
+.buckets{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.log{margin:0;padding:0;list-style:none;font-size:13px;display:grid;gap:4px}
+.log .ok{color:var(--g)}.log .no{color:var(--m)}
+
+/* panel flotante */
+.ov{position:fixed;inset:0;background:rgba(5,9,20,.84);display:grid;place-items:center;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));z-index:40}
+.modal{background:var(--surface);border:2px solid var(--g);max-width:620px;width:100%;padding:24px;box-shadow:0 0 48px rgba(0,255,102,.2);max-height:88vh;overflow:auto;display:grid;gap:16px;animation:pop .18s ease-out}
+.modal.bad{border-color:var(--m);box-shadow:0 0 48px rgba(255,0,85,.25)}
+.modal.gold{border-color:var(--y);box-shadow:0 0 48px rgba(255,212,0,.25)}
+@keyframes pop{from{transform:scale(.94);opacity:0}}
+.modal h4{margin:0;font:700 1.3rem/1.2 var(--display);letter-spacing:.04em;color:var(--g)}
+.modal.bad h4{color:var(--m)}.modal.gold h4{color:var(--y)}
+.modal p{margin:0}
+.modal .why{border-left:3px solid var(--c);padding:8px 12px;background:#0e1730}
+.modal .why b{color:var(--c)}
+.modal ol{margin:0;padding-left:24px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#0a1020;border:1px solid var(--y);color:var(--y);padding:10px 16px;z-index:50;animation:pop .2s;text-align:center;font-size:13px;max-width:calc(100% - 32px)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="scan" aria-hidden="true"></div>
+<header class="top"><div class="wrap">
+  <span class="brand">CYBER//REPASO<i></i></span>
+  <span id="rank" class="chip"></span>
+  <button id="mute" class="ico" type="button">SONIDO: ON</button>
+</div></header>
+
+<main class="wrap">
+  <section id="menu">
+    <div class="hero">
+      <span class="eyebrow">II Examen · Diseño de Software · 10° año</span>
+      <h1>Derrota a los 4 jefes<br>del <em>temario</em>.</h1>
+      <p class="lead">Las 80 preguntas de la práctica, repartidas en 4 mundos, más retos de consola donde tecleas los comandos de Git. Empiezas cada mundo con 100 HP: cada error cuesta 15 y cada 3 aciertos seguidos recuperas 10. Lo que falles vuelve al final hasta que lo domines.</p>
+      <div class="meter">
+        <div><span class="big" id="mastN">0/80</span><small>Preguntas dominadas</small></div>
+        <div class="track"><i id="mastBar" style="width:0"></i></div>
+        <div><span class="big" id="xpN">0</span><small>XP total</small></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2>Ruta de mundos</h2>
+      <ol class="route" id="worlds"></ol>
+    </div>
+    <div class="sec">
+      <h2>Insignias</h2>
+      <div class="badges" id="badges"></div>
+    </div>
+    <div class="foot">
+      <button id="reset" class="btn ghost" type="button">Borrar progreso</button>
+      <span><kbd>1</kbd>–<kbd>4</kbd> responder · <kbd>Enter</kbd> continuar</span>
+    </div>
+  </section>
+
+  <section id="game" hidden>
+    <div class="hud">
+      <div class="box">
+        <div class="hd"><span>Jugador</span><b id="hpt"></b></div>
+        <div class="bar hp"><i id="hpbar"></i></div>
+        <div class="stats"><span>XP <b id="xp">0</b></span><span id="combo">Combo <b>x0</b></span><span id="prog"></span></div>
+      </div>
+      <div class="box">
+        <div class="hd"><span>Jefe</span><b id="bosst"></b></div>
+        <div class="bossrow"><pre id="bossart" aria-hidden="true"></pre><span id="bossname"></span></div>
+        <div class="bar boss"><i id="bossbar"></i></div>
+      </div>
+    </div>
+    <div id="stage" class="stage"></div>
+    <div><button id="quit" class="btn ghost" type="button">← Salir al mapa</button></div>
+  </section>
+</main>
+<div id="ov" class="ov" hidden><div id="modal" class="modal" role="dialog" aria-modal="true"></div></div>
+
+<script>
+const GROUPS=[["Git y control de versiones","Fundamentos, repositorios y tres zonas","git-branch"],["Comandos esenciales de Git","Configuración, historial, preparación y exclusiones","terminal"],["Repositorio local y GitHub","Conexiones, colaboración y sincronización","cloud"],["Ramas y versiones","Branch, checkout, diff, merge y pull requests","git-merge"],["Fundamentos de virtualización","Tipos, categorías, host, guest e hipervisores","layers"],["Creación de máquinas virtuales","Procesador, RAM, discos, redes e instalación","cpu"],["Seguridad y recuperación","Actualización, respaldos, instantáneas y restauración","shield-check"],["Computación en la nube","Servicios, despliegues, VDI, pagos y tendencias","cloud-cog"]];
+const QUESTIONS=[{"g":0,"type":"mc","context":"Durante la creación de un formulario, tres integrantes modifican el proyecto en distintos días.","question":"¿Qué evidencia ayudaría a determinar cuándo se incorporó una validación?","options":["El tamaño total del proyecto","La fecha de creación de GitHub","El historial de commits"],"answer":2,"why":"Los commits permiten rastrear versiones y sus cambios a lo largo del tiempo.","id":"P01"},{"g":0,"type":"mc","context":"Una desarrolladora desea incluir en su siguiente versión los cambios del archivo estilos.css, pero no los de contacto.html.","question":"¿Qué decisión le ofrece ese control antes de guardar la versión?","options":["Preparar solo estilos.css","Sincronizar todo el proyecto","Cambiar la rama principal"],"answer":0,"why":"El área de preparación permite decidir qué cambios quedarán incluidos en el siguiente commit.","id":"P02"},{"g":0,"type":"mc","context":"Un equipo guarda cambios regularmente en Git, pero su computadora sufre una pérdida total del disco.","question":"¿Qué recurso adicional habría facilitado recuperar una copia externa del trabajo?","options":["El estado de preparación","Un repositorio remoto","La lista de archivos locales"],"answer":1,"why":"Un repositorio remoto previamente sincronizado conserva una copia fuera del equipo.","id":"P03"},{"g":0,"type":"mc","context":"Una estudiante ejecuta git add para un archivo y revisa que aún no figure como una versión nueva en el historial.","question":"¿Cómo debe interpretar ese resultado?","options":["El archivo sigue sin seguimiento","El archivo ya está en GitHub","El archivo está preparado"],"answer":2,"why":"git add prepara cambios en Staging Area; no los convierte en commits.","id":"P04"},{"g":0,"type":"mc","context":"Un compañero necesita mantener cambios experimentales separados del funcionamiento estable de una página.","question":"¿Qué recurso facilita trabajar con ambas versiones simultáneamente?","options":["Dos ramas del repositorio","Dos cuentas de GitHub","Dos archivos .gitignore"],"answer":0,"why":"Las ramas permiten trabajar sobre líneas de desarrollo separadas.","id":"P05"},{"g":0,"type":"mc","context":"Al revisar un proyecto, el equipo encuentra mensajes de versión como «arreglo» o «x».","question":"¿Qué práctica mejoraría la revisión de su historial?","options":["Eliminar los mensajes anteriores","Describir los cambios en cada commit","Repetir siempre el mismo mensaje"],"answer":1,"why":"Los mensajes específicos explican qué se modificó y facilitan el seguimiento.","id":"P06"},{"g":0,"type":"matching","context":"Relacionar conceptos de control de versiones.","question":"Asocie cada situación con el concepto que mejor la representa.","rows":[{"label":"Modificar contenido en el editor antes de preparar cambios","answer":1},{"label":"Seleccionar cambios que se incluirán en la siguiente versión","answer":3},{"label":"Guardar versiones confirmadas en la carpeta .git","answer":0},{"label":"Mantener una copia del proyecto alojada en GitHub","answer":2}],"options":["Repositorio local","Working Directory","Repositorio remoto","Staging Area"],"why":"Cada etapa o ubicación cumple una función distinta dentro de un flujo de Git.","id":"P07"},{"g":0,"type":"identify","context":"Secuencia de trabajo con un archivo web.","question":"Identifique qué representa cada elemento del esquema.","rows":[{"label":"① Escribir código y guardar cambios sin ejecutar comandos Git","answer":2},{"label":"② Seleccionar los cambios que formarán parte del siguiente registro","answer":0},{"label":"③ Conservar una versión confirmada que aparece en el historial","answer":1}],"options":["Staging Area","Repositorio local","Working Directory"],"why":"Editar, preparar y confirmar son tres acciones diferentes.","id":"P08"},{"g":0,"type":"short","context":"Un proyecto contiene archivos HTML y CSS cuya evolución interesa conservar.","question":"¿Qué nombre recibe el sistema que administra diferentes versiones de esos archivos?","model":"Sistema de control de versiones.","criteria":"Se acepta «control de versiones» o «sistema de control de versiones».","id":"P09"},{"g":0,"type":"restricted","context":"Dos programadores modificaron varias funciones de una aplicación escolar. No recuerdan quién hizo cada cambio.","question":"Explique dos beneficios concretos que obtendrían si hubieran registrado las versiones con Git.","model":"1. Consultar el historial para identificar los cambios y sus autores. 2. Recuperar o revisar una versión anterior si una modificación provoca errores.","criteria":["Relaciona Git con el seguimiento del historial y la autoría de cambios.","Explica cómo revisar o recuperar versiones anteriores aporta al proyecto."],"id":"P10"},{"g":1,"type":"mc","context":"En una computadora de uso compartido, un alumno necesita asociar su nombre al repositorio abierto, sin cambiar la identidad configurada para todos los proyectos del equipo.","question":"¿Cuál comando debe utilizar dentro del repositorio?","options":["git config --global user.name \"Ana\"","git config user.name \"Ana\"","git config user.email \"Ana\""],"answer":1,"why":"Sin --global, la configuración se aplica al repositorio local.","id":"P11"},{"g":1,"type":"mc","context":"Después de modificar home.html, una estudiante desea comprobar si Git detectó archivos nuevos y modificaciones pendientes.","question":"¿Qué comando le muestra esa información?","options":["git log","git init","git status"],"answer":2,"why":"git status informa sobre los archivos modificados, preparados o no seguidos.","id":"P12"},{"g":1,"type":"mc","context":"Se creó una carpeta nueva llamada FeriaWeb que todavía no pertenece a ningún repositorio y no tiene vínculo remoto.","question":"¿Qué comando inicia el control de versiones allí?","options":["git init","git clone","git push"],"answer":0,"why":"git init crea los metadatos de un repositorio local en esa carpeta.","id":"P13"},{"g":1,"type":"mc","context":"Un estudiante quiere ver rápidamente las descripciones de sus últimas versiones sin mostrar todos los detalles de cada registro.","question":"¿Qué consulta es la más adecuada?","options":["git status --short","git log --oneline","git add --all"],"answer":1,"why":"git log --oneline presenta cada commit en una línea.","id":"P14"},{"g":1,"type":"mc","context":"El archivo .env de un proyecto nuevo contiene datos que no deben agregarse al historial y todavía no está bajo seguimiento.","question":"¿Dónde se debe escribir una regla para excluirlo?","options":["Dentro del archivo README","En el mensaje del commit","Dentro de .gitignore"],"answer":2,"why":"El archivo .gitignore permite excluir archivos no seguidos mediante patrones.","id":"P15"},{"g":1,"type":"mc","context":"Una estudiante desea preparar únicamente el archivo menú.css para el siguiente registro.","question":"¿Qué comando corresponde a esa decisión?","options":["git add menu.css","git add .","git commit -m \"menu.css\""],"answer":0,"why":"git add con la ruta concreta prepara solo el archivo indicado.","id":"P16"},{"g":1,"type":"matching","context":"Cada comando realiza una operación diferente.","question":"Relacione el comando con el resultado que se espera obtener.","rows":[{"label":"Verificar la versión instalada de Git","answer":2},{"label":"Configurar el correo del repositorio actual","answer":0},{"label":"Leer el historial completo de versiones registradas","answer":3},{"label":"Preparar solo imagenes/logo.png","answer":1}],"options":["git config user.email \"correo@ejemplo.com\"","git add imagenes/logo.png","git --version","git log"],"why":"La diferencia principal es si el comando consulta, configura o prepara información.","id":"P17"},{"g":1,"type":"identify","context":"Fragmento de un resultado simplificado de git status.","question":"Identifique el estado de cada elemento mostrado en la terminal.","rows":[{"label":"① «modified: portada.html» fuera de Changes to be committed","answer":1},{"label":"② «new file: tema.css» dentro de Changes to be committed","answer":0},{"label":"③ «Untracked files: apuntes.txt»","answer":2}],"options":["Preparado para commit","Modificado sin preparar","Archivo nuevo sin seguimiento"],"why":"git status distingue archivos preparados, cambios pendientes y archivos no seguidos.","id":"P18"},{"g":1,"type":"short","context":"Un docente pide comprobar la identidad Git configurada únicamente dentro del proyecto actual.","question":"¿Qué comando permite consultar el nombre de usuario local?","model":"git config user.name","criteria":"Respuesta esperada: git config user.name, sin --global.","id":"P19"},{"g":1,"type":"restricted","context":"Está comenzando un proyecto de sitio web y ya creó los archivos index.html y estilos.css.","question":"Explique la secuencia de tres acciones de Git para preparar y registrar ambos archivos en la primera versión.","model":"1. Inicializar la carpeta con git init (si todavía no es repositorio). 2. Preparar los archivos con git add index.html estilos.css o git add . 3. Registrar la versión con git commit -m \"Inicio del sitio\".","criteria":["Incluye la inicialización del repositorio cuando corresponde.","Distingue la preparación de los archivos del registro definitivo.","Utiliza un commit con un mensaje que describe el cambio."],"id":"P20"},{"g":2,"type":"mc","context":"En GitHub se agregó un cambio al proyecto. En la computadora del diseñador existen archivos con modificaciones sin confirmar.","question":"¿Qué debe hacer primero para evitar perder su propio trabajo al actualizar?","options":["Registrar o resguardar los cambios locales","Clonar el repositorio en la misma carpeta","Eliminar la carpeta .git del proyecto"],"answer":0,"why":"Antes de integrar cambios remotos conviene dejar en un estado seguro los cambios locales.","id":"P21"},{"g":2,"type":"mc","context":"Una desarrolladora terminó un conjunto de cambios y confirmó el último commit. Necesita hacerlos visibles a sus compañeros en el repositorio compartido.","question":"¿Qué operación corresponde?","options":["Consultar el historial local","Actualizar desde el remoto","Enviar los commits al remoto"],"answer":2,"why":"Los commits locales se envían al repositorio remoto mediante push.","id":"P22"},{"g":2,"type":"mc","context":"En un equipo ya existe un repositorio completo, con historial y una dirección remota configurada. Se desea revisar a qué URL apunta.","question":"¿Qué comando resulta más útil?","options":["git branch -m","git remote -v","git status"],"answer":1,"why":"git remote -v muestra los remotos y sus direcciones configuradas.","id":"P23"},{"g":2,"type":"mc","context":"Un proyecto tiene la rama local main y el remoto está identificado con el alias colegio.","question":"¿Cuál instrucción envía main a ese remoto?","options":["git push colegio main","git pull colegio main","git clone colegio main"],"answer":0,"why":"git push utiliza el nombre del remoto y la rama que se desea enviar.","id":"P24"},{"g":2,"type":"mc","context":"En un proyecto de grupo, GitHub muestra cambios nuevos, pero el código de una computadora aún no incluye esos commits.","question":"¿Cuál afirmación explica correctamente la situación?","options":["El historial remoto se borra al editar localmente","Los commits locales siempre se actualizan solos","Las copias local y remota pueden diferir"],"answer":2,"why":"Los repositorios no siempre están sincronizados hasta realizar las operaciones necesarias.","id":"P25"},{"g":2,"type":"mc","context":"Una estudiante publica un repositorio en GitHub y desea invitar a otra persona a revisar una propuesta antes de incorporarla a la rama principal.","question":"¿Cuál mecanismo de GitHub facilita esa revisión?","options":["git init","Pull Request","git log --oneline"],"answer":1,"why":"La Pull Request facilita proponer, revisar y aprobar cambios antes de integrarlos.","id":"P26"},{"g":2,"type":"matching","context":"Colaboración entre el laboratorio y GitHub.","question":"Relacione cada necesidad con la operación apropiada.","rows":[{"label":"Inspeccionar las URL asociadas a nombres remotos","answer":3},{"label":"Obtener el repositorio por primera vez en otra carpeta","answer":1},{"label":"Enviar a GitHub una nueva versión ya confirmada","answer":0},{"label":"Incorporar al repositorio local los commits remotos","answer":2}],"options":["git push","git clone","git pull","git remote -v"],"why":"Clonar una primera copia, actualizar y publicar son operaciones distintas.","id":"P27"},{"g":2,"type":"identify","context":"Diagrama lógico de sincronización entre dos ubicaciones.","question":"Identifique el significado de cada flecha.","rows":[{"label":"① Computadora local → repositorio del equipo en GitHub","answer":1},{"label":"② GitHub → repositorio local ya creado","answer":2},{"label":"③ GitHub → nueva copia local en otra carpeta","answer":0}],"options":["Clonar","Publicar cambios","Actualizar repositorio"],"why":"La dirección y la situación inicial determinan qué operación tiene sentido.","id":"P28"},{"g":2,"type":"short","context":"Un estudiante ve en GitHub que la rama principal de un repositorio se llama master.","question":"¿Qué otra denominación común puede tener la rama principal?","model":"main","criteria":"Se acepta main; main y master son nombres posibles para la rama principal.","id":"P29"},{"g":2,"type":"restricted","context":"Un equipo del colegio utiliza un proyecto remoto para colaborar desde equipos distintos. Una persona trabaja en casa y otra en el laboratorio.","question":"Explique dos precauciones o acciones necesarias para mantener un trabajo compartido ordenado.","model":"1. Confirmar los cambios propios con commits descriptivos y enviarlos al remoto. 2. Antes de continuar, incorporar los cambios publicados por la otra persona y comprobar el estado del proyecto.","criteria":["Incluye una acción para conservar y publicar los cambios locales.","Incluye una acción para revisar o incorporar cambios remotos antes de seguir trabajando."],"id":"P30"},{"g":3,"type":"mc","context":"Una aplicación web tiene una rama «registro» terminada y una rama principal «main» a la que deben incorporarse los cambios.","question":"¿Desde qué rama conviene ejecutar git merge registro?","options":["Desde registro","Desde cualquier rama","Desde main"],"answer":2,"why":"Se ejecuta merge desde la rama que recibirá los cambios, en este caso main.","id":"P31"},{"g":3,"type":"mc","context":"Un estudiante consulta la lista de ramas y observa un asterisco al lado de pruebas.","question":"¿Qué indica ese símbolo en la salida de git branch?","options":["La rama actualmente activa","La rama publicada más reciente","La rama pendiente de eliminar"],"answer":0,"why":"El asterisco indica la rama local en la que se encuentra trabajando.","id":"P32"},{"g":3,"type":"mc","context":"Antes de compartir una demostración, se quiere cambiar el nombre de la rama borrador por presentacion.","question":"¿Cuál comando cumple esa tarea?","options":["git branch -d borrador","git branch -m borrador presentacion","git checkout borrador presentacion"],"answer":1,"why":"git branch -m permite cambiar el nombre de una rama.","id":"P33"},{"g":3,"type":"mc","context":"Se desea eliminar una rama de trabajo llamada pruebas-viejas que ya se integró y no está activa.","question":"¿Cuál operación es la apropiada?","options":["git merge pruebas-viejas","git checkout pruebas-viejas","git branch -d pruebas-viejas"],"answer":2,"why":"git branch -d elimina una rama local ya integrada, siempre que no sea la activa.","id":"P34"},{"g":3,"type":"mc","context":"La rama principal muestra el diseño antiguo, pero una rama alternativa conserva un menú recién desarrollado.","question":"¿Qué comando permite pasar a revisar el trabajo de esa otra rama?","options":["git checkout menu-nuevo","git merge menu-nuevo","git branch -m menu-nuevo"],"answer":0,"why":"git checkout cambia a una rama existente para trabajar en ella.","id":"P35"},{"g":3,"type":"mc","context":"Una estudiante propone cambios desde una rama y quiere que la docente los examine antes de incorporarlos a main.","question":"¿Qué elemento del flujo permite esa revisión en GitHub?","options":["Una configuración global","Una Pull Request","Un archivo .gitignore"],"answer":1,"why":"La solicitud de extracción permite discutir y revisar cambios antes de integrarlos.","id":"P36"},{"g":3,"type":"matching","context":"Administración de ramas locales.","question":"Relacione cada necesidad con el comando apropiado.","rows":[{"label":"Mostrar las ramas que existen en el repositorio local","answer":0},{"label":"Cambiar a una rama existente denominada mobile","answer":3},{"label":"Crear una nueva rama denominada ajustes","answer":1},{"label":"Renombrar la rama actual a evaluacion","answer":2}],"options":["git branch","git branch ajustes","git branch -m evaluacion","git checkout mobile"],"why":"Crear, listar, cambiar y renombrar ramas utilizan instrucciones distintas.","id":"P37"},{"g":3,"type":"identify","context":"Esquema de dos líneas de desarrollo de una aplicación.","question":"Identifique la acción o situación descrita en cada tramo.","rows":[{"label":"① main ──●────●; nace una línea secundaria para una función","answer":2},{"label":"② En la línea secundaria se guardan dos commits sin cambiar main","answer":0},{"label":"③ Los cambios secundarios se incorporan después a main","answer":1}],"options":["Trabajo independiente en una rama","Unificación de ramas","Creación de una rama"],"why":"Las ramas permiten trabajar por separado antes de integrar cambios.","id":"P38"},{"g":3,"type":"short","context":"En una práctica se crearon varias ramas, pero el estudiante no recuerda sus nombres.","question":"¿Cuál comando permite enumerar las ramas locales e indicar cuál está activa?","model":"git branch","criteria":"Se acepta git branch sin otros argumentos.","id":"P39"},{"g":3,"type":"restricted","context":"Una página de noticias funciona correctamente. Se planea incorporar una sección de comentarios que podría presentar fallos.","question":"Explique dos motivos para desarrollar la función en una rama distinta antes de integrarla.","model":"1. Permite hacer cambios y pruebas sin modificar de inmediato la versión estable. 2. Facilita comparar, revisar y posteriormente unir los cambios aprobados a la rama principal.","criteria":["Relaciona la rama separada con la protección de la versión estable.","Explica la utilidad de revisar y unir los cambios posteriormente."],"id":"P40"},{"g":4,"type":"mc","context":"Una escuela ejecuta dos sistemas Linux virtuales sobre un mismo servidor físico para probar programas distintos.","question":"¿Qué componente administra la distribución de recursos entre ambos entornos?","options":["El archivo ISO","El hipervisor","El navegador del anfitrión"],"answer":1,"why":"El hipervisor crea y administra máquinas virtuales y sus recursos.","id":"P41"},{"g":4,"type":"mc","context":"En una computadora física con Windows se abre VirtualBox y dentro se inicia Debian.","question":"¿Cuál sistema cumple la función de invitado?","options":["Debian","Windows","VirtualBox"],"answer":0,"why":"El sistema invitado es el que funciona dentro de la máquina virtual.","id":"P42"},{"g":4,"type":"mc","context":"Un centro de datos requiere instalar una plataforma de virtualización que gestione el hardware de su servidor directamente.","question":"¿Qué tipo de hipervisor describe esta instalación?","options":["Hipervisor tipo 2","Emulador de sistema","Hipervisor tipo 1"],"answer":2,"why":"El tipo 1 opera directamente sobre el hardware, sin un SO anfitrión convencional.","id":"P43"},{"g":4,"type":"mc","context":"Una compañía necesita aislar varios servicios que comparten el núcleo de Linux sin instalar un sistema operativo completo en cada entorno.","question":"¿Qué técnica describe mejor esa necesidad?","options":["Emulación de arquitectura","Virtualización a nivel de SO","Virtualización completa de VM"],"answer":1,"why":"Los contenedores comparten el núcleo del anfitrión, a diferencia de las VMs completas.","id":"P44"},{"g":4,"type":"mc","context":"Una persona usa software para reproducir el funcionamiento de una consola cuya arquitectura es diferente de la de su computadora.","question":"¿Cuál concepto describe mejor ese proceso?","options":["Emulación","Virtualización de escritorio","Virtualización de red"],"answer":0,"why":"La emulación imita el comportamiento de otra arquitectura o sistema.","id":"P45"},{"g":4,"type":"mc","context":"Se instala VirtualBox como programa dentro de un equipo con Windows para crear varias máquinas virtuales.","question":"¿Qué clasificación recibe ese hipervisor?","options":["Tipo 1, directo al hardware","Paravirtualización sin anfitrión","Tipo 2, instalado sobre un SO"],"answer":2,"why":"VirtualBox es un ejemplo frecuente de hipervisor tipo 2.","id":"P46"},{"g":4,"type":"matching","context":"Se presentan aplicaciones distintas de la virtualización.","question":"Relacione cada situación con la categoría de virtualización.","rows":[{"label":"Ofrecer escritorios de trabajo alojados en un servidor central","answer":2},{"label":"Separar redes lógicas usando el mismo hardware de conexión","answer":0},{"label":"Agrupar discos físicos como un espacio de almacenamiento","answer":3},{"label":"Ejecutar varios servidores independientes en un solo equipo","answer":1}],"options":["Redes","Servidores","Escritorios","Almacenamiento"],"why":"La categoría corresponde al recurso que se virtualiza.","id":"P47"},{"g":4,"type":"identify","context":"Tres estructuras simplificadas de ejecución.","question":"Identifique la técnica correspondiente a cada estructura.","rows":[{"label":"① Hardware → hipervisor → VM con su propio sistema operativo","answer":1},{"label":"② Hardware → sistema anfitrión → contenedores con núcleo compartido","answer":0},{"label":"③ Equipo actual → programa que imita otra arquitectura","answer":2}],"options":["Virtualización a nivel de SO","Virtualización completa","Emulación"],"why":"No todos los entornos virtuales ejecutan un sistema operativo invitado completo.","id":"P48"},{"g":4,"type":"short","context":"Una máquina virtual se ejecuta utilizando los recursos de una computadora real.","question":"¿Cómo se denomina la computadora principal que aporta esos recursos?","model":"Anfitrión (host).","criteria":"Se acepta equipo anfitrión, host o máquina anfitriona.","id":"P49"},{"g":4,"type":"restricted","context":"Una empresa debe probar una aplicación en Linux sin reemplazar el Windows instalado en sus equipos.","question":"Explique dos ventajas de crear una máquina virtual para realizar esa prueba.","model":"1. Permite ejecutar Linux sin sustituir el sistema Windows anfitrión. 2. Ofrece un entorno separado para pruebas de instalaciones, servicios o configuraciones.","criteria":["Relaciona la VM con la coexistencia de sistemas operativos.","Reconoce el aislamiento como beneficio de pruebas."],"id":"P50"},{"g":5,"type":"mc","context":"Una VM inicia con lentitud. El equipo anfitrión usa un disco mecánico y tiene disponible un SSD compatible.","question":"¿Qué cambio podría mejorar la lectura de los archivos de la VM?","options":["Almacenar la VM en el SSD","Reducir el número de vCPU","Cambiar la dirección de red"],"answer":0,"why":"Los SSD suelen ofrecer acceso a disco más rápido que los HDD.","id":"P51"},{"g":5,"type":"mc","context":"Un técnico crea una VM para prácticas y desea que su disco virtual reserve desde el inicio el tamaño completo configurado.","question":"¿Qué modalidad de disco debe seleccionar?","options":["Disco de crecimiento dinámico","Archivo ISO de arranque","Disco de tamaño fijo"],"answer":2,"why":"Un disco fijo reserva inicialmente el espacio definido.","id":"P52"},{"g":5,"type":"mc","context":"Una alumna busca conectar su VM con el anfitrión para una práctica aislada, sin darle salida directa a Internet por ese adaptador.","question":"¿Qué modo de red se ajusta mejor?","options":["Red en puente","Red solo anfitrión","Red NAT"],"answer":1,"why":"Host-only se utiliza para comunicación entre host y VMs, sin salida directa a Internet por esa red.","id":"P53"},{"g":5,"type":"mc","context":"Un laboratorio dispone de un host con 16 GB de RAM y piensa ejecutar Windows más una VM Linux para probar una página sencilla.","question":"¿Cuál asignación inicial deja una reserva razonable para el anfitrión?","options":["4 GB a la VM","15 GB a la VM","16 GB a la VM"],"answer":0,"why":"Asignar una parte moderada de RAM deja recursos para el sistema principal.","id":"P54"},{"g":5,"type":"mc","context":"Para crear una máquina virtual en VirtualBox, se necesita elegir un formato de disco propio de la plataforma.","question":"¿Cuál extensión se asocia directamente con VirtualBox?","options":["VHDX","VMDK","VDI"],"answer":2,"why":"VDI es el formato nativo de disco virtual de VirtualBox.","id":"P55"},{"g":5,"type":"mc","context":"Una máquina virtual no puede iniciar de acuerdo con la configuración esperada y el equipo dispone de un procesador compatible con aceleración de virtualización.","question":"¿Qué configuración conviene revisar antes de reinstalarla?","options":["El brillo de pantalla","La activación de VT-x o AMD-V","El formato del mensaje de commit"],"answer":1,"why":"La disponibilidad y activación de virtualización por hardware puede ser necesaria.","id":"P56"},{"g":5,"type":"matching","context":"Elementos frecuentes al preparar una VM.","question":"Relacione cada elemento con la función principal que cumple.","rows":[{"label":"Archivo que contiene el medio de instalación de Ubuntu","answer":3},{"label":"Capacidad de procesamiento asignada a la máquina","answer":1},{"label":"Memoria temporal utilizada por el sistema invitado","answer":0},{"label":"Archivo que guarda el sistema y los datos instalados","answer":2}],"options":["RAM virtual asignada","vCPU","Disco virtual","Imagen ISO"],"why":"La ISO instala; el disco virtual guarda; CPU y RAM aportan recursos de ejecución.","id":"P57"},{"g":5,"type":"identify","context":"Se muestra una configuración de ejemplo: Ubuntu · 2 vCPU · 4 GB · 50 GB VDI.","question":"Identifique el tipo de recurso indicado en cada marca.","rows":[{"label":"① «2 vCPU» en las propiedades de la máquina","answer":0},{"label":"② «4 GB» asignados a la máquina virtual","answer":2},{"label":"③ «50 GB VDI» reservado para archivos del sistema","answer":1}],"options":["Procesamiento","Almacenamiento","Memoria"],"why":"Las propiedades describen tres recursos diferentes que dependen del host.","id":"P58"},{"g":5,"type":"short","context":"Un técnico recibe un archivo de disco virtual procedente de un entorno Microsoft y desea reconocer su formato.","question":"¿Cuál de los formatos de disco virtual estudiados se asocia con Microsoft?","model":"VHD o VHDX.","criteria":"Se acepta VHD o VHDX.","id":"P59"},{"g":5,"type":"restricted","context":"Una computadora física tiene 16 GB de RAM. Se quiere montar una VM para probar un servidor web ligero y seguir trabajando en el anfitrión.","question":"Explique dos decisiones de configuración razonables relacionadas con recursos y conectividad.","model":"1. Asignar a la VM una cantidad moderada de RAM, por ejemplo 4 GB, dejando memoria disponible al anfitrión. 2. Seleccionar NAT si se requiere acceder a Internet desde la VM para descargar herramientas.","criteria":["Justifica una distribución de RAM que no agote al anfitrión.","Selecciona y justifica un modo de red coherente con el objetivo descrito."],"id":"P60"},{"g":6,"type":"mc","context":"Un administrador guarda una instantánea antes de cambiar la configuración de una VM. También necesita protección si se pierde el disco físico.","question":"¿Qué medida complementaria hace falta?","options":["Crear otra instantánea local","Conservar un backup independiente","Cambiar el nombre de la VM"],"answer":1,"why":"Una instantánea normalmente depende del entorno original y no sustituye una copia externa.","id":"P61"},{"g":6,"type":"mc","context":"Una empresa realiza un respaldo completo los domingos y el miércoles copia todos los cambios acumulados desde el domingo.","question":"¿Cómo se clasifica el respaldo del miércoles?","options":["Diferencial","Incremental","Completo"],"answer":0,"why":"El diferencial incluye los cambios desde el último respaldo completo.","id":"P62"},{"g":6,"type":"mc","context":"La contraseña predeterminada de un sistema invitado es fácil de adivinar.","question":"¿Qué mejora atiende más directamente ese problema?","options":["Asignar más RAM","Crear un disco dinámico","Configurar credenciales fuertes"],"answer":2,"why":"Las contraseñas fuertes reducen el riesgo de accesos no autorizados.","id":"P63"},{"g":6,"type":"mc","context":"Un respaldo se guarda correctamente cada día, pero nunca se ha probado su restauración.","question":"¿Cuál riesgo continúa presente?","options":["Que los archivos .iso no puedan instalar Linux","Que la recuperación falle cuando se necesite","Que los commits de Git se vuelvan remotos"],"answer":1,"why":"Solo una prueba de restauración permite comprobar que la copia es recuperable.","id":"P64"},{"g":6,"type":"mc","context":"Tras instalar una actualización de Linux en una VM, se necesita que el sistema cargue nuevamente los servicios con los cambios aplicados.","question":"¿Cuál operación corresponde normalmente?","options":["Reiniciar la VM","Clonar el disco","Pausar la VM"],"answer":0,"why":"Reiniciar vuelve a ejecutar el sistema y aplica cambios que requieren un nuevo arranque.","id":"P65"},{"g":6,"type":"mc","context":"Se ejecutan muchas VMs y el host físico se queda sin espacio libre.","question":"¿Qué acción es más útil para evitar problemas de administración?","options":["Subir todas las vCPU","Crear nuevas instantáneas","Revisar uso y capacidad de almacenamiento"],"answer":2,"why":"Monitorear recursos ayuda a prevenir fallas por falta de disco.","id":"P66"},{"g":6,"type":"matching","context":"Estrategias de protección y recuperación.","question":"Relacione la necesidad con el mecanismo más adecuado.","rows":[{"label":"Recuperar rápidamente el estado previo a una prueba fallida","answer":1},{"label":"Conservar una copia fuera del disco original","answer":2},{"label":"Guardar solo cambios desde el respaldo anterior","answer":3},{"label":"Guardar todos los datos seleccionados de nuevo","answer":0}],"options":["Backup completo","Snapshot","Backup independiente","Backup incremental"],"why":"La elección depende de si se quiere revertir, recuperar una pérdida o conservar cambios.","id":"P67"},{"g":6,"type":"identify","context":"Plan de continuidad para una máquina virtual de prácticas.","question":"Identifique el concepto representado por cada acción.","rows":[{"label":"① Antes de actualizar: guardar el estado de la VM para poder volver atrás","answer":1},{"label":"② Guardar una copia recuperable en una ubicación separada","answer":2},{"label":"③ Recuperar la copia y comprobar que la web responde","answer":0}],"options":["Verificación de restauración","Instantánea","Respaldo independiente"],"why":"Un mecanismo preventivo no cumple el mismo objetivo que una copia recuperable.","id":"P68"},{"g":6,"type":"short","context":"Una organización restauró su servidor web desde una copia de seguridad.","question":"¿Qué comprobación debe realizar para verificar que la restauración fue útil?","model":"Verificar que el sistema inicie y que la aplicación web y sus datos funcionen.","criteria":"Se acepta una comprobación concreta: arranque del sistema, funcionamiento del sitio o integridad de archivos.","id":"P69"},{"g":6,"type":"restricted","context":"Un servidor virtual aloja una página de registros estudiantiles. La institución desea reducir el riesgo de accesos indebidos.","question":"Explique dos medidas de seguridad que deberían aplicarse en ese entorno.","model":"1. Mantener actualizados el hipervisor, sistema invitado y aplicaciones. 2. Establecer permisos de acceso adecuados y reglas de firewall para limitar los servicios expuestos.","criteria":["Propone una medida válida de mantenimiento o actualización.","Propone una medida concreta de control de accesos o red."],"id":"P70"},{"g":7,"type":"mc","context":"Una empresa contrata máquinas virtuales y decide instalar por su cuenta Linux y la aplicación web.","question":"¿Qué modelo de servicio está utilizando?","options":["PaaS","IaaS","SaaS"],"answer":1,"why":"IaaS ofrece infraestructura sobre la que el cliente administra sistema y aplicaciones.","id":"P71"},{"g":7,"type":"mc","context":"Una universidad desea que sus laboratorios accedan a escritorios ejecutados en una infraestructura central, desde distintos equipos autorizados.","question":"¿Qué tecnología responde a ese objetivo?","options":["VDI","FaaS","BaaS"],"answer":0,"why":"VDI permite utilizar remotamente escritorios ejecutados en infraestructura central.","id":"P72"},{"g":7,"type":"mc","context":"Una plataforma ejecuta una función cuando un usuario carga una fotografía y genera automáticamente una miniatura.","question":"¿Cuál modelo representa mejor esa ejecución basada en eventos?","options":["SaaS","IaaS","FaaS"],"answer":2,"why":"FaaS permite ejecutar funciones cuando ocurren eventos, sin gestionar directamente el servidor.","id":"P73"},{"g":7,"type":"mc","context":"Una organización utiliza una infraestructura de nube destinada exclusivamente a sus propias operaciones, aunque es gestionada por un tercero.","question":"¿Cómo se clasifica ese despliegue?","options":["Nube pública","Nube privada","Nube híbrida"],"answer":1,"why":"Privada describe un entorno de nube destinado al uso exclusivo de una organización.","id":"P74"},{"g":7,"type":"mc","context":"Una tienda en línea pasa de 100 a miles de visitas diarias y aumenta temporalmente los recursos contratados.","question":"¿Qué propiedad de la nube está aprovechando?","options":["Elasticidad","Emulación","Paravirtualización"],"answer":0,"why":"La elasticidad permite ampliar y reducir recursos de acuerdo con la demanda.","id":"P75"},{"g":7,"type":"mc","context":"Una aplicación web necesita autenticación y almacenamiento preparados, para no programar desde cero esos servicios de backend.","question":"¿Qué opción se ajusta más directamente?","options":["IaaS","VDI","BaaS"],"answer":2,"why":"BaaS proporciona funciones de backend listas para integrar, como autenticación y datos.","id":"P76"},{"g":7,"type":"matching","context":"Modelos de servicios contratados en la nube.","question":"Relacione cada necesidad con el modelo correspondiente.","rows":[{"label":"Usar una suite de oficina desde el navegador","answer":2},{"label":"Alquilar cómputo, red y almacenamiento configurables","answer":0},{"label":"Publicar una aplicación sin administrar todo el servidor","answer":1},{"label":"Ejecutar una función que responde a un evento","answer":3}],"options":["IaaS","PaaS","SaaS","FaaS"],"why":"La clasificación depende de qué ofrece y administra el proveedor.","id":"P77"},{"g":7,"type":"identify","context":"Tres formas de organizar infraestructura en la nube.","question":"Identifique el tipo de despliegue ilustrado por cada descripción.","rows":[{"label":"① Un proveedor ofrece servicios a numerosos clientes aislando sus recursos","answer":0},{"label":"② Toda la infraestructura de nube se destina a una sola organización","answer":2},{"label":"③ Se conectan servicios de nube pública con una nube de uso exclusivo","answer":1}],"options":["Pública","Híbrida","Privada"],"why":"La forma de despliegue es diferente del tipo de servicio contratado.","id":"P78"},{"g":7,"type":"short","context":"Una aplicación de documentos cobra a sus usuarios una cuota fija cada mes por el acceso al servicio.","question":"¿Cómo se denomina esa modalidad de cobro en la nube?","model":"Suscripción.","criteria":"Se acepta suscripción mensual o pago por suscripción.","id":"P79"},{"g":7,"type":"restricted","context":"Una empresa pequeña planea trasladar su sitio web desde un servidor de oficina hacia un servicio de nube.","question":"Explique dos beneficios y una precaución que debería considerar antes del cambio.","model":"Beneficios: puede aumentar recursos según la demanda y evita comprar toda la infraestructura desde el inicio. Precaución: debe revisar permisos, protección de datos y costos del servicio.","criteria":["Explica un beneficio de flexibilidad, acceso o menor inversión inicial.","Explica otro beneficio diferente, como escalabilidad o colaboración.","Reconoce un riesgo o cuidado real: seguridad, privacidad, costos o dependencia del proveedor."],"id":"P80"}];
+
+
+/* Retos extra: temario del enunciado que la práctica no cubre + mecánicas de consola */
+const EXTRA={
+ w1mid:[
+  {t:'mc',context:'En clase se discute el origen de la herramienta que el grupo usa para versionar sus proyectos.',question:'¿Quién creó Git y en qué año?',options:['Linus Torvalds, en 2005','Tom Preston-Werner, en 2008','Bill Gates, en 1995'],answer:0,why:'Linus Torvalds creó Git en 2005 para el desarrollo del kernel de Linux. El 2008 corresponde a GitHub, una plataforma distinta construida sobre Git.'},
+  {t:'mc',context:'Un estudiante dice: «No puedo usar Git porque no tengo cuenta de GitHub».',question:'¿Cuál corrección es la adecuada?',options:['Git funciona en la computadora sin Internet; GitHub es una plataforma web que aloja repositorios Git','Tiene razón: Git solo funciona con una cuenta de GitHub','GitHub es el programa y Git es su sitio web'],answer:0,why:'Git es la herramienta local (funciona offline). GitHub es un servicio en la nube que guarda repositorios Git y agrega colaboración.'},
+  {t:'term',context:'Acabas de crear la carpeta FeriaWeb y estás dentro de ella en la terminal.',question:'Escribe el comando que la convierte en un repositorio Git.',re:/^git init$/,sol:'git init',why:'`git init` crea la carpeta oculta `.git` y con ella el repositorio local. Se ejecuta una sola vez por proyecto.'},
+  {t:'order',context:'Modificaste index.html y quieres registrar una versión nueva.',question:'Ordena el ciclo de trabajo básico de Git, del primer paso al último.',seq:['Editar el archivo','git status','git add .','git commit -m "cambios"'],why:'Editar (Working Directory) → revisar con `git status` → preparar con `git add` (Staging Area) → confirmar con `git commit` (repositorio local).'}
+ ],
+ w1end:[
+  {t:'term',context:'Es tu primera vez usando Git en la computadora de tu casa.',question:'Configura el nombre "Ana" para TODOS los repositorios de esa computadora.',re:/^git config --global user\.name ((["']).+\2|\S+)$/,sol:'git config --global user.name "Ana"',why:'Con `--global` la identidad aplica a todos los repositorios del equipo. Sin esa opción, solo al repositorio actual.'},
+  {t:'mc',context:'Un proyecto contiene index.html, estilos.css, .env, la carpeta node_modules/ y el archivo servidor.log.',question:'¿Qué entradas conviene escribir en .gitignore?',options:['.env, node_modules/ y servidor.log','index.html y estilos.css','Solo index.html'],answer:0,why:'Se excluyen secretos (`.env`), dependencias que se reinstalan (`node_modules/`) y logs. El código fuente sí se versiona.'},
+  {t:'term',context:'Tus cambios ya están en el Staging Area.',question:'Confírmalos con el mensaje "primer commit".',re:/^git commit -m (["']).+\1$/,sol:'git commit -m "primer commit"',why:'`git commit -m "mensaje"` guarda lo preparado en el historial; `-m` permite escribir el mensaje en la misma línea.'},
+  {t:'mission',question:'Golpe final: completa el ciclo de trabajo en un proyecto nuevo.',steps:[
+    {goal:'Convierte la carpeta ~/proyecto en un repositorio Git.',re:/^git init$/,sol:'git init',out:'Initialized empty Git repository in ~/proyecto/.git/'},
+    {goal:'Creaste index.html. Revisa el estado del repositorio.',re:/^git status$/,sol:'git status',out:'On branch main\nUntracked files:\n    index.html'},
+    {goal:'Pasa index.html al Staging Area.',re:/^git add (\.|index\.html)$/,sol:'git add index.html',out:'(sin salida: index.html quedó preparado)'},
+    {goal:'Confirma los cambios con un mensaje descriptivo.',re:/^git commit -m (["']).+\1$/,sol:'git commit -m "Inicio del sitio"',out:'[main (root-commit) a1b2c3d] Inicio del sitio\n 1 file changed, 12 insertions(+)'},
+    {goal:'Muestra el historial resumido, una línea por commit.',re:/^git log --oneline$/,sol:'git log --oneline',out:'a1b2c3d (HEAD -> main) Inicio del sitio'}],
+   why:'Recorriste las 3 zonas: Working Directory → Staging Area (`git add`) → repositorio local (`git commit`), verificando con `git status` y `git log --oneline`.'}
+ ],
+ w2mid:[
+  {t:'term',context:'Creaste un repositorio con git init y ahora tienes un repositorio vacío en GitHub.',question:'Conéctalo al remoto https://github.com/ana/feria.git con el alias origin.',re:/^git remote add origin \S+$/,sol:'git remote add origin https://github.com/ana/feria.git',why:'`git remote add origin URL` registra el remoto con el alias `origin`. No sube nada todavía: solo crea el vínculo.'},
+  {t:'term',context:'El remoto origin ya está configurado y tus commits están en la rama main.',question:'Envía la rama main al remoto origin.',re:/^git push( (-u|--set-upstream))? origin main$/,sol:'git push origin main',why:'`git push origin main` envía al remoto `origin` los commits de `main`. Con `-u` Git recuerda el destino para los próximos push.'}
+ ],
+ w2end:[
+  {t:'term',context:'Vas a desarrollar la pantalla de inicio de sesión sin tocar main.',question:'Crea la rama login y cámbiate a ella con un solo comando.',re:/^git (checkout -b|switch -c) login$/,sol:'git checkout -b login',why:'`git checkout -b login` crea la rama y te cambia a ella. Equivale a `git branch login` seguido de `git checkout login`.'},
+  {t:'order',context:'La barra de navegación se desarrollará en su propia rama y luego se publicará.',question:'Ordena el flujo de trabajo completo.',seq:['git checkout -b navbar','git add .','git commit -m "navbar lista"','git checkout main','git merge navbar','git push origin main'],why:'Se crea la rama, se trabaja y confirma en ella; luego se vuelve a `main` (la rama que recibe), se fusiona y se publica.'},
+  {t:'mission',question:'Golpe final: colabora en el repositorio del equipo.',steps:[
+    {goal:'Descarga https://github.com/equipo/web.git a tu computadora.',re:/^git clone \S+$/,sol:'git clone https://github.com/equipo/web.git',out:"Cloning into 'web'...\nReceiving objects: 100% (48/48), done."},
+    {goal:'Revisa a qué URL apunta el remoto.',re:/^git remote -v$/,sol:'git remote -v',out:'origin  https://github.com/equipo/web.git (fetch)\norigin  https://github.com/equipo/web.git (push)'},
+    {goal:'Crea la rama navbar y cámbiate a ella en un solo comando.',re:/^git (checkout -b|switch -c) navbar$/,sol:'git checkout -b navbar',out:"Switched to a new branch 'navbar'"},
+    {goal:'Editaste varios archivos. Prepáralos todos.',re:/^git add (\.|-A|--all)$/,sol:'git add .',out:'(sin salida: cambios preparados)'},
+    {goal:'Confirma los cambios con un mensaje.',re:/^git commit -m (["']).+\1$/,sol:'git commit -m "Agrega navbar"',out:'[navbar 9f8e7d6] Agrega navbar\n 3 files changed, 41 insertions(+)'},
+    {goal:'Regresa a la rama que recibirá los cambios.',re:/^git (checkout|switch) main$/,sol:'git checkout main',out:"Switched to branch 'main'"},
+    {goal:'Incorpora a main los commits que tus compañeros publicaron.',re:/^git pull( origin main)?$/,sol:'git pull origin main',out:'Already up to date.'},
+    {goal:'Integra la rama navbar en main.',re:/^git merge navbar$/,sol:'git merge navbar',out:'Updating a1b2c3d..9f8e7d6\nFast-forward'},
+    {goal:'Publica main en el remoto origin.',re:/^git push( (-u|--set-upstream))?( origin main)?$/,sol:'git push origin main',out:'To https://github.com/equipo/web.git\n   a1b2c3d..9f8e7d6  main -> main'}],
+   why:'Flujo colaborativo completo: `clone` una vez, rama propia, `pull` para actualizar, `merge` desde la rama que recibe y `push` para compartir.'}
+ ],
+ w3mid:[
+  {t:'classify',question:'Clasificador: ¿hipervisor tipo 1 o tipo 2?',buckets:['Tipo 1 · directo al hardware','Tipo 2 · sobre un SO'],items:[
+    ['VMware ESXi',0,'se instala directo sobre el servidor'],['Oracle VirtualBox',1,'es un programa sobre Windows, macOS o Linux'],['Microsoft Hyper-V',0,'corre directamente sobre el hardware'],['VMware Workstation',1,'se instala sobre un sistema anfitrión'],['Citrix XenServer',0,'hipervisor de servidor, sin SO anfitrión'],['Parallels Desktop',1,'aplicación para macOS']],
+   why:'Si se instala directo en el hardware es tipo 1 (ESXi, Hyper-V, XenServer); si es un programa sobre un sistema operativo es tipo 2 (VirtualBox, Workstation, Parallels).'}
+ ],
+ w3end:[
+  {t:'order',question:'Golpe final: ordena los pasos para montar una VM Ubuntu en VirtualBox.',context:'Tienes un equipo Windows con 16 GB de RAM y la virtualización por hardware activada.',seq:['Instalar VirtualBox en el anfitrión','Crear la VM: 2 vCPU, 4 GB de RAM y disco VDI','Montar la imagen ISO de Ubuntu','Instalar el sistema invitado','Tomar una instantánea del sistema limpio'],why:'Primero el hipervisor, luego la VM con sus recursos, después la ISO para instalar el invitado y al final una instantánea para volver a un estado limpio.'}
+ ],
+ w4mid:[
+  {t:'order',context:'Una VM de prácticas va a recibir una actualización importante del sistema.',question:'Ordena el plan de protección y recuperación.',seq:['Tomar una instantánea antes de actualizar','Guardar un respaldo en otra ubicación','Aplicar la actualización y reiniciar la VM','Probar la restauración y verificar que la web responde'],why:'La instantánea permite volver atrás rápido, el respaldo independiente protege si se pierde el disco, y solo una prueba de restauración confirma que la copia sirve.'}
+ ],
+ w4end:[
+  {t:'classify',question:'Golpe final: clasifica cada servicio según su modelo.',buckets:['IaaS','PaaS','SaaS','FaaS'],items:[
+    ['Amazon EC2',0,'alquila servidores virtuales'],['Google Drive',2,'aplicación lista para usar'],['Heroku',1,'plataforma para publicar tu código'],['AWS Lambda',3,'ejecuta funciones ante eventos'],['Gmail',2,'correo listo para usar'],['Máquinas virtuales de Azure',0,'infraestructura configurable'],['Google App Engine',1,'plataforma para ejecutar aplicaciones'],['Azure Functions',3,'funciones que responden a eventos']],
+   why:'IaaS = infraestructura (alquilas servidores). PaaS = plataforma (subes tu código). SaaS = software terminado. FaaS = funciones que se ejecutan cuando ocurre un evento.'}
+ ]
+ ,git:[
+  {t:'term',screen:'fatal: not a git repository (or any of the parent directories): .git',context:'Escribiste git status en la carpeta FeriaWeb y Git respondió con este error.',question:'Convierte la carpeta en un repositorio Git.',re:/^git init$/,sol:'git init',out:'Initialized empty Git repository in ~/FeriaWeb/.git/',why:'El error indica que la carpeta no tiene `.git`. `git init` la crea y empieza el control de versiones.'},
+  {t:'term',context:'Modificaste varios archivos y no recuerdas cuáles.',question:'Muestra qué archivos están modificados, preparados o sin seguimiento.',re:/^git status$/,sol:'git status',out:'On branch main\nChanges not staged for commit:\n    modified:   index.html\nUntracked files:\n    estilos.css',why:'`git status` solo informa: no cambia nada del repositorio.'},
+  {t:'term',context:'Necesitas saber si Git está instalado en la computadora del laboratorio.',question:'Consulta la versión instalada de Git.',re:/^git --version$/,sol:'git --version',out:'git version 2.47.0',why:'`git --version` muestra la versión instalada; si da error, Git no está instalado.'},
+  {t:'term',context:'Es tu computadora personal y quieres que todos tus repositorios usen tu correo.',question:'Configura el correo ana@colegio.cr de forma global.',re:/^git config --global user\.email ((["']).+\2|\S+)$/,sol:'git config --global user.email "ana@colegio.cr"',out:'(sin salida: correo configurado para todos los repositorios)',why:'`--global` guarda la configuración para todos los repositorios del usuario.'},
+  {t:'term',context:'En una computadora compartida quieres firmar solo este repositorio con tu nombre.',question:'Configura el nombre "Ana" únicamente para el repositorio actual.',re:/^git config user\.name ((["']).+\2|\S+)$/,sol:'git config user.name "Ana"',out:'(sin salida: nombre configurado solo en este repositorio)',why:'Sin `--global`, la configuración es local: afecta solo al repositorio donde estás.'},
+  {t:'term',context:'El docente quiere comprobar qué nombre tiene configurado este repositorio.',question:'Consulta el nombre de usuario local.',re:/^git config user\.name$/,sol:'git config user.name',out:'Ana',why:'Sin valor después de `user.name`, Git muestra el nombre configurado en vez de cambiarlo.'},
+  {t:'term',screen:'Untracked files:\n    index.html\n    notas.txt',context:'Solo index.html debe entrar en la siguiente versión.',question:'Prepara únicamente index.html.',re:/^git add index\.html$/,sol:'git add index.html',out:'(sin salida: index.html pasó al Staging Area)',why:'Con el nombre del archivo eliges exactamente qué pasa al Staging Area; `git add .` habría incluido también notas.txt.'},
+  {t:'term',screen:'Changes not staged for commit:\n    modified:   index.html\n    modified:   estilos.css\n    modified:   app.js',context:'Todos los cambios de la carpeta deben ir en la siguiente versión.',question:'Prepara todos los cambios de una sola vez.',re:/^git add (\.|-A|--all)$/,sol:'git add .',out:'(sin salida: 3 archivos preparados)',why:'`git add .` prepara todos los cambios de la carpeta actual.'},
+  {t:'term',screen:'Changes to be committed:\n    new file:   portada.html',context:'La portada ya está preparada.',question:'Registra la versión con el mensaje "Agrega portada".',re:/^git commit -m (["']).+\1$/,sol:'git commit -m "Agrega portada"',out:'[main 4c2e1a9] Agrega portada\n 1 file changed, 30 insertions(+)',why:'`git commit -m` guarda lo preparado en el repositorio local con un mensaje que describe el cambio.'},
+  {t:'term',context:'Quieres ver rápido las últimas versiones, una por línea.',question:'Muestra el historial resumido.',re:/^git log --oneline$/,sol:'git log --oneline',out:'4c2e1a9 (HEAD -> main) Agrega portada\n91b7f30 Inicio del sitio',why:'`--oneline` muestra cada commit en una línea: identificador corto y mensaje.'},
+  {t:'term',context:'Necesitas ver el autor y la fecha de cada versión.',question:'Muestra el historial completo de commits.',re:/^git log$/,sol:'git log',out:'commit 4c2e1a9...\nAuthor: Ana <ana@colegio.cr>\nDate:   Mon Nov 9 10:12 2026\n\n    Agrega portada',why:'`git log` sin opciones muestra autor, fecha y mensaje completos de cada commit.'},
+  {t:'term',screen:'Changes not staged for commit:\n    modified:   estilos.css',context:'Antes de preparar estilos.css quieres ver exactamente qué líneas cambiaron.',question:'Muestra las diferencias de los cambios sin preparar.',re:/^git diff( estilos\.css)?$/,sol:'git diff',out:'-  color: blue;\n+  color: #00e5ff;',why:'`git diff` compara el Working Directory con lo último preparado o confirmado: muestra líneas quitadas (-) y agregadas (+).'},
+  {t:'term',screen:'Untracked files:\n    .env\n    index.html',context:'El archivo .env tiene contraseñas y nunca debe subirse.',question:'Agrega .env al archivo .gitignore desde la terminal.',re:/^echo (["']?)\.env\1 >> \.gitignore$/,sol:'echo ".env" >> .gitignore',out:'(sin salida: .env agregado a .gitignore)',why:'`>>` agrega una línea al final de `.gitignore`. A partir de ahí, `git status` ya no muestra `.env`.'},
+  {t:'term',context:'Creaste varias ramas y no recuerdas sus nombres.',question:'Lista las ramas locales e identifica la activa.',re:/^git branch$/,sol:'git branch',out:'  ajustes\n* main\n  mobile',why:'`git branch` sin argumentos lista las ramas; el asterisco marca la activa.'},
+  {t:'term',context:'Vas a probar cambios de diseño sin tocar main.',question:'Crea la rama ajustes (sin cambiarte a ella).',re:/^git branch ajustes$/,sol:'git branch ajustes',out:'(sin salida: rama ajustes creada)',why:'`git branch nombre` solo crea la rama; sigues en la rama actual.'},
+  {t:'term',screen:'  ajustes\n* main\n  mobile',context:'Quieres trabajar en la versión para celulares.',question:'Cámbiate a la rama mobile.',re:/^git (checkout|switch) mobile$/,sol:'git checkout mobile',out:"Switched to branch 'mobile'",why:'`git checkout rama` (o `git switch rama`) cambia a una rama existente.'},
+  {t:'term',context:'Vas a desarrollar el formulario de registro en una rama nueva.',question:'Crea la rama registro y cámbiate a ella con un solo comando.',re:/^git (checkout -b|switch -c) registro$/,sol:'git checkout -b registro',out:"Switched to a new branch 'registro'",why:'`-b` crea la rama y cambia a ella en un paso.'},
+  {t:'term',screen:'* borrador\n  main',context:'Antes de presentar, la rama actual debe llamarse presentacion.',question:'Renombra la rama actual a presentacion.',re:/^git branch -m (borrador )?presentacion$/,sol:'git branch -m presentacion',out:'(sin salida: rama renombrada)',why:'`git branch -m nuevo` renombra la rama actual; `git branch -m viejo nuevo` renombra cualquier otra.'},
+  {t:'term',screen:'* main\n  pruebas-viejas',context:'La rama pruebas-viejas ya se integró y no se usa.',question:'Elimina la rama pruebas-viejas.',re:/^git branch -d pruebas-viejas$/,sol:'git branch -d pruebas-viejas',out:'Deleted branch pruebas-viejas (was 7d1e2b4).',why:'`git branch -d` elimina una rama ya integrada; no puedes borrar la rama en la que estás.'},
+  {t:'term',screen:'* main\n  registro',context:'La rama registro está terminada y estás en main, la rama que recibe.',question:'Integra la rama registro en main.',re:/^git merge registro$/,sol:'git merge registro',out:'Updating 4c2e1a9..b81f0c2\nFast-forward\n registro.html | 42 ++++',why:'`git merge` se ejecuta desde la rama que recibe los cambios, en este caso main.'},
+  {t:'term',context:'Te unes a un equipo y todavía no tienes el proyecto en tu computadora.',question:'Descarga el repositorio https://github.com/equipo/web.git.',re:/^git clone \S+$/,sol:'git clone https://github.com/equipo/web.git',out:"Cloning into 'web'...\nReceiving objects: 100% (48/48), done.",why:'`git clone` copia el repositorio completo con su historial y deja configurado `origin`.'},
+  {t:'term',context:'No sabes a qué dirección apunta el remoto del proyecto.',question:'Muestra los remotos con sus URL.',re:/^git remote -v$/,sol:'git remote -v',out:'origin  https://github.com/equipo/web.git (fetch)\norigin  https://github.com/equipo/web.git (push)',why:'`git remote -v` lista cada remoto con sus direcciones de descarga y envío.'},
+  {t:'term',context:'El colegio creó un repositorio en GitHub y quiere que su alias sea colegio.',question:'Agrega el remoto colegio con la URL https://github.com/cole/feria.git.',re:/^git remote add colegio \S+$/,sol:'git remote add colegio https://github.com/cole/feria.git',out:'(sin salida: remoto colegio agregado)',why:'El alias puede ser cualquier nombre: `origin` es solo la convención.'},
+  {t:'term',context:'Tus commits están en main y el remoto se llama colegio.',question:'Envía la rama main al remoto colegio.',re:/^git push( -u)? colegio main$/,sol:'git push colegio main',out:'To https://github.com/cole/feria.git\n   4c2e1a9..b81f0c2  main -> main',why:'`git push remoto rama` publica tus commits locales.'},
+  {t:'term',screen:"Your branch is behind 'origin/main' by 2 commits.",context:'Un compañero publicó cambios y tu copia está atrasada.',question:'Incorpora los commits remotos a tu rama.',re:/^git pull( origin main)?$/,sol:'git pull origin main',out:'Updating 4c2e1a9..e09d311\nFast-forward\n 2 files changed, 18 insertions(+)',why:'`git pull` descarga e integra los commits nuevos del remoto en tu rama.'},
+  {t:'mission',question:'Golpe final: del proyecto nuevo a GitHub en una sola sesión de terminal.',steps:[
+    {goal:'Inicia el repositorio en la carpeta portafolio.',re:/^git init$/,sol:'git init',out:'Initialized empty Git repository in ~/portafolio/.git/'},
+    {goal:'Configura tu nombre "Ana" solo para este repositorio.',re:/^git config user\.name ((["']).+\2|\S+)$/,sol:'git config user.name "Ana"',out:'(sin salida)'},
+    {goal:'Haz que Git ignore la carpeta node_modules/.',re:/^echo (["']?)node_modules\/?\1 >> \.gitignore$/,sol:'echo "node_modules/" >> .gitignore',out:'(sin salida: regla agregada)'},
+    {goal:'Prepara todos los archivos.',re:/^git add (\.|-A|--all)$/,sol:'git add .',out:'(sin salida)'},
+    {goal:'Registra la primera versión con un mensaje.',re:/^git commit -m (["']).+\1$/,sol:'git commit -m "Primera versión"',out:'[main (root-commit) 5a0c9e1] Primera versión\n 4 files changed, 120 insertions(+)'},
+    {goal:'Conecta el remoto origin: https://github.com/ana/portafolio.git',re:/^git remote add origin \S+$/,sol:'git remote add origin https://github.com/ana/portafolio.git',out:'(sin salida)'},
+    {goal:'Verifica la URL del remoto.',re:/^git remote -v$/,sol:'git remote -v',out:'origin  https://github.com/ana/portafolio.git (fetch)\norigin  https://github.com/ana/portafolio.git (push)'},
+    {goal:'Publica main en origin.',re:/^git push( (-u|--set-upstream))? origin main$/,sol:'git push -u origin main',out:"To https://github.com/ana/portafolio.git\n * [new branch]      main -> main"}],
+   why:'Recorriste el flujo completo: crear el repositorio, configurarlo, excluir dependencias, versionar y publicar en GitHub.'}
+ ]
+};
+
+const WORLDS=[
+ {name:'El Laberinto de Git',c:'#00ff66',g:[0,1],mid:'w1mid',end:'w1end',boss:'Minotauro del .git',
+  art:String.raw` }\___/{
+  (ò_ó)
+ /|###|\
+  |GIT|
+  /   \ `},
+ {name:'Las Ramas y la Nube Colaborativa',c:'#ffd400',g:[2,3],mid:'w2mid',end:'w2end',boss:'Hidra de Ramas',
+  art:String.raw`<ò> <ò> <ò>
+  \  |  /
+   \ | /
+  [MERGE]`},
+ {name:'La Fortaleza del Hipervisor',c:'#00e5ff',g:[4,5],mid:'w3mid',end:'w3end',boss:'Hypervisor-0',
+  art:String.raw`┌─────────┐
+│[VM][VM] │
+│  ◉   ◉  │
+└─┬─────┬─┘`},
+ {name:'El Reino de la Nube',c:'#ff0055',g:[6,7],mid:'w4mid',end:'w4end',boss:'Nimbus, titán de la nube',
+  art:String.raw`  .-~~~-.
+ ( ò   ó )
+(___~~~___)
+  ϟ  ϟ  ϟ`},
+ {name:'Consola Git: modo terminal',c:'#00ff66',g:[],list:'git',boss:'Daemon de la terminal',
+  art:String.raw` ┌──────────┐
+ │ $ git _  │
+ │  (ò_ó)   │
+ └──────────┘`}
+];
+function challenges(w){
+  if(w.list)return [...EXTRA[w.list]];
+  const fromG=g=>QUESTIONS.filter(q=>q.g===g).map(q=>({...q,t:q.type}));
+  return [...fromG(w.g[0]),...EXTRA[w.mid],...fromG(w.g[1]),...EXTRA[w.end]];
+}
+
+const BADGES=[
+ {id:'commit',gl:'>_',n:'Primer Commit',d:'Supera el Mundo 1'},
+ {id:'git',gl:'⎇',n:'Git Master',d:'Supera los Mundos 1 y 2'},
+ {id:'hyper',gl:'▣',n:'Hypervisor Architect',d:'Supera el Mundo 3'},
+ {id:'cloud',gl:'◠',n:'Cloud Pioneer',d:'Supera el Mundo 4'},
+ {id:'combo',gl:'x5',n:'Racha imparable',d:'5 aciertos seguidos'},
+ {id:'clean',gl:'✓',n:'Código Limpio',d:'Un mundo sin errores'},
+ {id:'all',gl:'80',n:'Examen dominado',d:'Domina las 80 preguntas'}];
+const TYPES={mc:'Selección única',matching:'Correspondencia',identify:'Identificación',short:'Respuesta corta',restricted:'Respuesta restringida',term:'Terminal',order:'Secuencia',mission:'Misión de consola',classify:'Clasificador'};
+const PS='ana@lab:~/proyecto$';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');
+const norm=s=>s.trim().replace(/\s+/g,' ').replace(/[“”«»]/g,'"').replace(/[‘’]/g,"'");
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const L=i=>String.fromCharCode(65+i);
+
+/* ---------- estado ---------- */
+const KEY='cyber-repaso-v2';
+const S={hp:100,xp:0,combo:0,muted:false,done:[false,false,false,false],badges:{},mastered:{},w:0,queue:[],retry:[],total:0,solved:0,errors:0,cur:null,review:false,fresh:[]};
+try{const d=JSON.parse(localStorage.getItem(KEY)||'{}');['xp','muted','done','badges','mastered'].forEach(k=>{if(d[k]!==undefined)S[k]=d[k]})}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({xp:S.xp,muted:S.muted,done:S.done,badges:S.badges,mastered:S.mastered}))}catch(e){}};
+const mastN=ids=>ids.filter(id=>S.mastered[id]).length;
+
+/* ---------- audio 8 bits ---------- */
+let ac;
+function tone(f,at,d,type='square',v=.06){
+  if(S.muted)return;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+    const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+at;
+    o.type=type;o.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d);
+  }catch(e){}
+}
+const sfx={
+  ok:()=>{tone(660,0,.09);tone(990,.09,.14)},
+  bad:()=>{tone(220,0,.14,'sawtooth');tone(130,.13,.25,'sawtooth')},
+  tick:()=>tone(520,0,.05),
+  heal:()=>[523,784,1047].forEach((f,i)=>tone(f,i*.07,.1,'triangle',.08)),
+  win:()=>[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,i*.12,.2)),
+  lose:()=>[330,262,196,131].forEach((f,i)=>tone(f,i*.18,.3,'sawtooth'))
+};
+
+/* ---------- UI ---------- */
+const stage=$('#stage'),ov=$('#ov'),modal=$('#modal');
+function show(id){$('#menu').hidden=id!=='menu';$('#game').hidden=id!=='game';window.scrollTo(0,0)}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+function award(id){if(S.badges[id])return;S.badges[id]=1;S.fresh.push(id);const b=BADGES.find(x=>x.id===id);toast(`Insignia desbloqueada: ${b.n}`);save()}
+function rank(){const r=S.xp<200?'Aprendiz':S.xp<600?'Dev Junior':S.xp<1200?'Dev Senior':'Arquitecto de Software';$('#rank').innerHTML=`<span id="rankName">${r} · </span><b>${S.xp}</b> XP`}
+function hud(){
+  const hp=Math.max(0,S.hp);
+  $('#hpbar').style.width=hp+'%';
+  $('#hpbar').style.background=hp>50?'var(--g)':hp>25?'var(--y)':'var(--m)';
+  $('#hpt').textContent=`HP ${hp}/100`;
+  $('#xp').textContent=S.xp;
+  const c=$('#combo');c.innerHTML=`Combo <b>x${S.combo}</b>`;c.classList.toggle('hot',S.combo>=3);
+  const left=S.total-S.solved;
+  $('#bossbar').style.width=(left/S.total*100)+'%';
+  $('#bosst').textContent=`HP ${left}/${S.total}`;
+  $('#prog').textContent=S.review?'Ronda de repaso':`Reto ${Math.min(S.solved+1,S.total)}/${S.total}`;
+  rank();
+}
+function bossHit(){const b=$('#bossart');b.classList.remove('hit');void b.offsetWidth;b.classList.add('hit')}
+function openModal(cls,html,actions){
+  modal.className='modal '+cls;modal.innerHTML=html+'<div class="actions" id="acts"></div>';
+  actions.forEach(([label,fn,kind],i)=>{const b=document.createElement('button');b.type='button';b.className='btn'+(kind?' '+kind:'');b.textContent=label;b.onclick=()=>{ov.hidden=true;fn()};$('#acts').appendChild(b);if(i===0)setTimeout(()=>b.focus(),30)});
+  ov.hidden=false;
+}
+
+/* ---------- reglas ---------- */
+function gain(n){
+  S.combo++;S.xp+=n+S.combo*2;sfx.ok();
+  if(S.combo>=5)award('combo');
+  if(S.combo%3===0&&S.hp<100){S.hp=Math.min(100,S.hp+10);setTimeout(()=>{sfx.heal();toast('Racha x'+S.combo+': +10 HP')},250)}
+}
+function hurt(){
+  S.hp-=15;S.combo=0;S.errors++;sfx.bad();
+  document.body.classList.remove('hurt');void document.body.offsetWidth;document.body.classList.add('hurt');
+  hud();return S.hp<=0;
+}
+function feedback(ok,why,extra,title){
+  hud();save();
+  const dead=S.hp<=0;
+  openModal(ok?'':'bad',
+    `<h4>${title||(ok?'✓ Correcto':'✗ Error · −15 HP')}</h4>${extra?`<p>${extra}</p>`:''}${why?`<p class="why"><b>¿Por qué?</b> ${fmt(why)}</p>`:''}${ok&&S.combo>1?`<p class="hint">Combo x${S.combo} · bonificación de XP activa</p>`:''}`,
+    [[dead?'Continuar':'Continuar →',dead?gameOver:next]]);
+}
+function master(){if(S.cur.id){S.mastered[S.cur.id]=1;if(mastN(QUESTIONS.map(q=>q.id))===80)award('all')}}
+function answer(ok,why,extra){
+  if(ok){S.solved++;master();gain(10);bossHit()}else{hurt();S.retry.push(S.cur)}
+  feedback(ok,why,extra);
+}
+function complete(why,errs){
+  S.solved++;S.xp+=30;if(!errs)S.combo++;sfx.ok();bossHit();
+  feedback(true,why,errs?`Reto completado con ${errs} error(es). +30 XP`:'Ejecución perfecta. +30 XP');
+}
+
+/* ---------- flujo ---------- */
+function startWorld(i){
+  const w=WORLDS[i],ch=challenges(w);
+  Object.assign(S,{w:i,hp:100,combo:0,queue:ch,retry:[],total:ch.length,solved:0,errors:0,review:false,fresh:[]});
+  $('#bossname').textContent=w.boss;$('#bossart').textContent=w.art;
+  document.documentElement.style.setProperty('--wc',w.c);
+  show('game');next();
+}
+function next(){
+  if(!S.queue.length){
+    if(S.retry.length){S.queue=shuffle(S.retry);S.retry=[];S.review=true;toast('El jefe sigue en pie: repasa lo que fallaste')}
+    else return worldClear();
+  }
+  S.cur=S.queue.shift();hud();
+  const c=S.cur,unit=c.g!==undefined?`Unidad ${c.g+1} · ${GROUPS[c.g][0]}`:'Reto del mundo';
+  stage.innerHTML=`<div class="shead"><span class="tag">${TYPES[c.t]}</span><span>${esc(unit)}</span>${c.id?`<span class="id">Práctica ${c.id}</span>`:''}</div>
+    ${c.context?`<p class="scene">${fmt(c.context)}</p>`:''}<p class="q">${fmt(c.question)}</p><div id="ch" style="display:grid;gap:16px"></div>`;
+  ({mc:rMc,matching:rMatch,identify:rMatch,short:rWrite,restricted:rWrite,term:rTerm,order:rOrder,mission:rMission,classify:rClassify})[c.t](c,$('#ch'));
+  stage.scrollIntoView({block:'nearest'});
+}
+function worldClear(){
+  const i=S.w;S.done[i]=true;
+  if(i===0)award('commit');
+  if(S.done[0]&&S.done[1])award('git');
+  if(i===2)award('hyper');
+  if(i===3)award('cloud');
+  if(S.errors===0)award('clean');
+  save();sfx.win();
+  const nb=S.fresh.map(id=>BADGES.find(b=>b.id===id).n).join(' · ');
+  const acts=[];
+  if(i<3)acts.push([`Mundo ${i+2} →`,()=>startWorld(i+1)]);
+  acts.push(['Mapa',menu,i<3?'ghost':'']);
+  openModal('gold',`<h4>${esc(WORLDS[i].boss)} derrotado</h4>
+    <p>Errores: <b>${S.errors}</b> · HP restante: <b>${S.hp}</b> · XP total: <b>${S.xp}</b></p>
+    ${nb?`<p>Insignias nuevas: <b>${esc(nb)}</b></p>`:''}
+    <p class="why">${S.done.slice(0,4).every(Boolean)?'Superaste los 4 mundos. Repite cualquiera para reforzar las preguntas que aún no dominas.':'Lo que fallaste volvió a aparecer hasta que lo resolviste. Sigue con el próximo mundo.'}</p>`,acts);
+}
+function gameOver(){
+  sfx.lose();
+  openModal('bad',`<h4>Sistema caído</h4><p>Te quedaste sin HP frente a ${esc(WORLDS[S.w].boss)}.</p><p class="why">Conservas tu XP y las preguntas que ya dominaste. Lee con calma cada explicación en el reintento.</p>`,
+    [['Reintentar →',()=>startWorld(S.w)],['Mapa',menu,'ghost']]);
+}
+function menu(){
+  show('menu');rank();
+  const all=QUESTIONS.map(q=>q.id),m=mastN(all);
+  $('#mastN').textContent=`${m}/80`;$('#mastBar').style.width=(m/80*100)+'%';$('#xpN').textContent=S.xp;
+  $('#worlds').innerHTML=WORLDS.map((w,i)=>{
+    const open=i===0||!!w.list||S.done[i-1],ids=QUESTIONS.filter(q=>w.g.includes(q.g)).map(q=>q.id),mm=mastN(ids),n=challenges(w).length;
+    return `<li class="stop ${S.done[i]?'clear':open?'':'locked'}" style="--wc:${w.c}">
+      <span class="node">${S.done[i]?'✓':i+1}</span>
+      <div class="wcard">
+        <h3>${esc(w.name)}</h3>
+        <button class="btn" type="button" data-w="${i}" ${open?'':'disabled'} style="${open?`border-color:${w.c};color:${w.c}`:''}">${S.done[i]?'Repetir':open?'Jugar':'Bloqueado'}</button>
+        <div class="wmeta">${w.list?'<span>Bonus · siempre disponible</span><span>Tecleas comandos reales en una terminal simulada</span>':w.g.map(g=>`<span>${esc(GROUPS[g][0])}</span>`).join('')}</div>
+        <div class="wfoot"><span>Jefe: ${esc(w.boss)} · ${n} retos</span>${ids.length?`<span class="track"><i style="width:${mm/ids.length*100}%"></i></span><span>${mm}/${ids.length} dominadas</span>`:''}</div>
+      </div></li>`}).join('');
+  $('#badges').innerHTML=BADGES.map(b=>`<div class="badge ${S.badges[b.id]?'on':''}"><span class="gl">${S.badges[b.id]?b.gl:'?'}</span><span><b>${b.n}</b>${b.d}</span></div>`).join('');
+}
+
+/* ---------- tipos de reto ---------- */
+function rMc(c,el){
+  const opts=shuffle(c.options.map((t,i)=>({t,ok:i===c.answer})));
+  el.innerHTML=`<div class="opts">${opts.map((o,i)=>`<button type="button" class="opt" data-i="${i}"><span class="k">${i+1}</span><span>${fmt(o.t)}</span></button>`).join('')}</div>`;
+  const btns=[...el.querySelectorAll('.opt')];
+  btns.forEach(b=>b.onclick=()=>{
+    const o=opts[b.dataset.i],good=opts.find(x=>x.ok);
+    btns.forEach((x,k)=>{x.disabled=true;if(opts[k].ok)x.classList.add('ok')});
+    if(!o.ok)b.classList.add('no');
+    answer(o.ok,c.why,o.ok?'':`Elegiste: ${fmt(o.t)}<br>Correcta: <b>${fmt(good.t)}</b>`);
+  });
+}
+function rMatch(c,el){
+  const pick=Array(c.rows.length).fill(-1);
+  el.innerHTML=`<div class="legend">${c.options.map((o,k)=>`<span><b>${L(k)}</b>${fmt(o)}</span>`).join('')}</div>
+    <div class="mrows">${c.rows.map((r,j)=>`<div class="mrow" id="mr${j}"><p>${fmt(r.label)}</p><div class="letters" role="group" aria-label="Respuesta para el elemento ${j+1}">${c.options.map((o,k)=>`<button type="button" data-r="${j}" data-k="${k}" aria-label="${L(k)}: ${esc(o)}">${L(k)}</button>`).join('')}</div></div>`).join('')}</div>
+    <div class="actions"><button class="btn" type="button" id="chk" disabled>Comprobar relaciones</button><span class="hint">Cada letra se usa una sola vez.</span></div>`;
+  const draw=()=>{el.querySelectorAll('.letters button').forEach(b=>{const r=+b.dataset.r,k=+b.dataset.k;b.classList.toggle('sel',pick[r]===k);b.classList.toggle('used',pick.includes(k))});$('#chk').disabled=pick.includes(-1)};
+  el.querySelectorAll('.letters button').forEach(b=>b.onclick=()=>{const r=+b.dataset.r,k=+b.dataset.k;const o=pick.indexOf(k);if(o>-1&&o!==r)pick[o]=-1;pick[r]=pick[r]===k?-1:k;sfx.tick();draw()});
+  $('#chk').onclick=()=>{
+    el.querySelectorAll('.letters button').forEach(b=>b.disabled=true);$('#chk').disabled=true;
+    let score=0;
+    c.rows.forEach((r,j)=>{const ok=pick[j]===r.answer;score+=ok;const row=$('#mr'+j);row.classList.add(ok?'ok':'no');if(!ok)row.insertAdjacentHTML('beforeend',`<span class="fix">Correcta: ${L(r.answer)}. ${fmt(c.options[r.answer])}</span>`)});
+    const ok=score===c.rows.length;
+    answer(ok,c.why,`Relaciones correctas: <b>${score}/${c.rows.length}</b>${ok?'':'. Las marcadas en rojo muestran la respuesta correcta.'}`);
+  };
+}
+function rWrite(c,el){
+  const crit=Array.isArray(c.criteria)?c.criteria:[c.criteria];
+  el.innerHTML=`<textarea id="wr" class="${c.t==='restricted'?'long':''}" placeholder="Escribe tu respuesta antes de ver la solución…" aria-label="Tu respuesta"></textarea>
+    <div class="actions"><button class="btn" type="button" id="rev">Comparar con la solución</button><span class="hint">Te autoevalúas: decir «necesito repasar» no quita HP.</span></div><div id="sol"></div>`;
+  $('#wr').focus();
+  $('#rev').onclick=()=>{
+    $('#wr').readOnly=true;$('#rev').remove();
+    $('#sol').innerHTML=`<div class="model"><h4>Respuesta orientativa</h4><p>${fmt(c.model)}</p><ul>${crit.map(x=>`<li>${fmt(x)}</li>`).join('')}</ul></div>
+      <div class="actions" style="margin-top:16px"><span class="hint" style="width:100%">¿Tu respuesta cumple con lo solicitado?</span><button class="btn" type="button" id="yes">Sí, la resolví</button><button class="btn ghost" type="button" id="no">Necesito repasar</button></div>`;
+    $('#yes').focus();
+    $('#yes').onclick=()=>{S.solved++;master();gain(10);bossHit();feedback(true,'',`Bien. Compara siempre tu redacción con los criterios: es lo que se evalúa en el examen.`)};
+    $('#no').onclick=()=>{S.combo=0;S.retry.push(c);feedback(false,'','Esta pregunta volverá en la ronda de repaso. Relee la respuesta orientativa y fíjate en cada criterio.','↻ Para repasar')};
+  };
+}
+function termHTML(){return `<div class="tline"><span class="ps">${PS}</span><input id="cmd" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Línea de comandos"></div>`}
+function rTerm(c,el){
+  el.innerHTML=`<div class="term" id="term"><div id="out">${c.screen?`<div class="o">${esc(c.screen)}</div>`:''}</div>${termHTML()}</div><div class="actions"><button class="btn" type="button" id="go">Ejecutar ⏎</button><span class="hint">Escribe el comando completo y presiona Enter.</span></div>`;
+  const inp=$('#cmd');
+  const run=()=>{const v=norm(inp.value);if(!v||inp.disabled)return;inp.disabled=true;$('#go').disabled=true;
+    const ok=c.re.test(v);
+    const out=$('#out'),add=(cls,t)=>{const d=document.createElement('div');d.className='o '+cls;d.textContent=t;out.appendChild(d)};
+    add('cmd',PS+' '+v);add(ok?'good':'err',ok?(c.out||''):'✗ Comando incorrecto');
+    if(!ok)return setTimeout(()=>answer(false,c.why,`Escribiste: <code>${esc(v)}</code><br>Se esperaba: <code>${esc(c.sol)}</code>`),500);
+    return setTimeout(()=>answer(true,c.why,''),500);
+    answer(ok,c.why,ok?'':`Escribiste: <code>${esc(v)}</code><br>Se esperaba: <code>${esc(c.sol)}</code>`)};
+  inp.onkeydown=e=>{if(e.key==='Enter')run()};$('#go').onclick=run;inp.focus();
+}
+function rOrder(c,el){
+  const pool=c.seq.map((t,i)=>({t,i}));
+  do{shuffle(pool)}while(pool.every((p,k)=>p.i===k));
+  let pick=[];
+  el.innerHTML=`<span class="lbl">Tu secuencia · toca un paso para quitarlo</span><ol id="seq" class="seq"></ol>
+    <span class="lbl">Pasos disponibles · toca o arrastra</span><div id="pool" class="pool"></div>
+    <div class="actions"><button id="run" class="btn" type="button">Ejecutar secuencia</button></div>`;
+  const seq=$('#seq'),pl=$('#pool'),run=$('#run');
+  const draw=()=>{
+    pl.innerHTML=pool.filter(p=>!pick.includes(p)).map(p=>`<button type="button" class="piece" draggable="true" data-i="${p.i}">${esc(p.t)}</button>`).join('');
+    seq.innerHTML=pick.map(p=>`<li><button type="button" class="piece on" data-i="${p.i}">${esc(p.t)}</button></li>`).join('')||'<li class="empty">Vacía: elige el primer paso</li>';
+    run.disabled=pick.length<pool.length;
+  };
+  const add=i=>{const p=pool.find(x=>x.i==i);if(p&&!pick.includes(p)){pick.push(p);sfx.tick();draw()}};
+  pl.onclick=e=>{const b=e.target.closest('.piece');if(b)add(b.dataset.i)};
+  seq.onclick=e=>{const b=e.target.closest('.piece');if(b){pick=pick.filter(p=>p.i!=b.dataset.i);draw()}};
+  pl.ondragstart=e=>{if(e.target.dataset)e.dataTransfer.setData('text/plain',e.target.dataset.i)};
+  seq.ondragover=e=>e.preventDefault();
+  seq.ondrop=e=>{e.preventDefault();add(e.dataTransfer.getData('text/plain'))};
+  run.onclick=()=>{
+    const ok=pick.every((p,k)=>p.i===k);
+    run.disabled=true;pl.onclick=seq.onclick=null;
+    answer(ok,c.why,ok?'':`Orden correcto:<ol>${c.seq.map(s=>`<li><code>${esc(s)}</code></li>`).join('')}</ol>`);
+  };
+  draw();
+}
+function rMission(c,el){
+  let i=0,errs=0;
+  el.innerHTML=`<p class="goal" id="goal"></p><div class="term" id="term"><div id="out"></div>${termHTML()}</div>
+    <div class="actions"><button class="btn" type="button" id="go">Ejecutar ⏎</button><span class="hint">Cada comando incorrecto cuesta 15 HP.</span></div>`;
+  const inp=$('#cmd'),out=$('#out'),term=$('#term');
+  const line=(cls,txt)=>{const d=document.createElement('div');d.className='o '+cls;d.textContent=txt;out.appendChild(d);term.scrollTop=term.scrollHeight};
+  const goal=()=>{$('#goal').innerHTML=`<b>Objetivo ${i+1}/${c.steps.length}:</b> ${fmt(c.steps[i].goal)}`};
+  const run=()=>{
+    const v=norm(inp.value);if(!v||inp.disabled)return;
+    const s=c.steps[i];inp.value='';line('cmd',PS+' '+v);
+    if(s.re.test(v)){
+      line('good',s.out);S.xp+=5;sfx.tick();i++;hud();
+      if(i>=c.steps.length){inp.disabled=true;$('#go').disabled=true;return complete(c.why,errs)}
+      goal();
+    }else{
+      errs++;line('err',`✗ Ese comando no cumple el objetivo. Solución: ${s.sol}`);
+      if(hurt()){inp.disabled=true;return feedback(false,`El comando correcto era \`${s.sol}\`. ${c.why}`,'Te quedaste sin HP en plena misión.')}
+    }
+    inp.focus();
+  };
+  inp.onkeydown=e=>{if(e.key==='Enter')run()};$('#go').onclick=run;goal();inp.focus();
+}
+function rClassify(c,el){
+  const items=shuffle([...c.items]);let i=0,errs=0;
+  el.innerHTML=`<div class="card" id="card"></div>
+    <div class="buckets">${c.buckets.map((b,k)=>`<button class="btn ghost bk" type="button" data-k="${k}">${esc(b)}</button>`).join('')}</div><ul class="log" id="log"></ul>`;
+  const card=()=>{$('#card').innerHTML=`${esc(items[i][0])}<small>${i+1} de ${items.length}</small>`};
+  const off=()=>el.querySelectorAll('.bk').forEach(x=>x.disabled=true);
+  el.querySelectorAll('.bk').forEach(b=>b.onclick=()=>{
+    const [name,k,note]=items[i],ok=+b.dataset.k===k;
+    const li=document.createElement('li');li.className=ok?'ok':'no';
+    li.textContent=`${ok?'✓':'✗'} ${name} → ${c.buckets[k]}: ${note}`;$('#log').prepend(li);
+    i++;
+    if(ok){S.xp+=5;sfx.tick();hud()}
+    else{errs++;if(hurt()){off();return feedback(false,c.why,`${esc(name)} pertenece a <b>${esc(c.buckets[k])}</b>. Te quedaste sin HP.`)}}
+    if(i>=items.length){off();return complete(c.why,errs)}
+    card();
+  });
+  card();
+}
+
+/* ---------- eventos ---------- */
+$('#worlds').onclick=e=>{const b=e.target.closest('[data-w]');if(b&&!b.disabled){sfx.tick();startWorld(+b.dataset.w)}};
+$('#quit').onclick=()=>openModal('bad','<h4>¿Salir al mapa?</h4><p>Perderás el avance de este mundo. Tu XP y las preguntas dominadas se conservan.</p>',[['Seguir jugando',()=>{}],['Salir',()=>{save();menu()},'warn']]);
+$('#reset').onclick=()=>openModal('bad','<h4>¿Borrar todo el progreso?</h4><p>Se eliminan XP, mundos superados, insignias y preguntas dominadas. No se puede deshacer.</p>',[['Cancelar',()=>{},'ghost'],['Borrar todo',()=>{S.xp=0;S.done=[false,false,false,false];S.badges={};S.mastered={};save();menu()},'warn']]);
+const muteBtn=$('#mute');
+const drawMute=()=>{muteBtn.textContent=S.muted?'Sonido: off':'Sonido: on';muteBtn.setAttribute('aria-pressed',String(!S.muted))};
+muteBtn.onclick=()=>{S.muted=!S.muted;drawMute();save();sfx.tick()};
+document.addEventListener('keydown',e=>{
+  if(!ov.hidden||$('#game').hidden||['INPUT','TEXTAREA'].includes(e.target.tagName))return;
+  const n=+e.key;if(n>=1&&n<=4){const b=stage.querySelectorAll('.opt')[n-1];if(b&&!b.disabled)b.click()}
+});
+drawMute();menu();
+</script>
